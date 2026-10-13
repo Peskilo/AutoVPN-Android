@@ -1143,3 +1143,34 @@ private fun StatusNotice(message: String, onClick: () -> Unit, error: Boolean, t
             color = colors.coral, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
     }
 }
+
+
+@Composable
+private fun PingwinStyleRow(
+    symbol: String,
+    symbolColor: Color,
+    symbolBackground: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(symbolBackground),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(symbol, color = symbolColor, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color(0xFF17191F), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, color = Color(0xFF697184), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Spacer(Modifier.width(10.dp))
+        Text("›", color = Color(0xFF455064), fontSize = 26.sp)
+    }
+}
