@@ -51,24 +51,13 @@ jobs:
             test -s "$apk"
             "$build_tools/apksigner" verify --verbose "$apk"
             size="$(stat -c%s "$apk")"
+            echo "$apk: $size bytes"
             if (( size > 150 * 1024 * 1024 )); then
               echo "::error file=$apk::APK unexpectedly exceeds 150 MiB; ABI filtering failed"
               exit 1
             fi
           done
           sha256sum "${apks[@]}" | tee "$apk_dir/SHA256SUMS.txt"
-
-      - name: Build ABI-specific release APKs
-        shell: bash
-        run: |
-          set -euo pipefail
-          out="app/build/outputs/autovpn-release-apks"
-          mkdir -p "$out"
-          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-            rm -f app/build/outputs/apk/release/app-release.apk
-            ./gradlew assembleRelease -PautovpnAbi="$abi" --stacktrace
-            cp app/build/outputs/apk/release/app-release.apk "$out/app-$abi-release.apk"
-          done
 
       - name: Release AAB
         run: ./gradlew bundleRelease --stacktrace
@@ -80,12 +69,6 @@ jobs:
             app/build/outputs/autovpn-debug-apks/*.apk
             app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
           if-no-files-found: error
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: app/build/outputs/autovpn-release-apks/*.apk
-          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v4
         with:
