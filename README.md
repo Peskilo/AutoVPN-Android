@@ -1,4 +1,4 @@
-# Yuyake — Android VPN client
+# AutoVPN — Android VPN client
 
 **English** · [Русский](README.ru.md)
 
@@ -6,7 +6,7 @@
 > The design is not final and the interface, features and screenshots below
 > may change at any time. Expect rough edges. Not on Google Play yet.
 
-An Android VPN/proxy client built on the **sing-box** core (libbox). Add a
+AutoVPN is an Android VPN/proxy client built on the **sing-box** core (libbox). Add a
 subscription link, pick a server, tap connect. Kotlin, Jetpack Compose
 (Material 3), coroutines/Flow, Hilt, Room, DataStore, OkHttp.
 
