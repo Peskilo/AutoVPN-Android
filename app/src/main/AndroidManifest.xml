@@ -35,10 +35,10 @@
         android:name=".VpnClientApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_sayan_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_sayan_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.VPNClient"
         android:usesCleartextTraffic="true">
