@@ -59,9 +59,6 @@ jobs:
           done
           sha256sum "${apks[@]}" | tee "$apk_dir/SHA256SUMS.txt"
 
-      - name: Release AAB
-        run: ./gradlew bundleRelease --stacktrace
-
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
@@ -70,8 +67,3 @@ jobs:
             app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: app/build/outputs/bundle/release/*.aab
-          if-no-files-found: error
