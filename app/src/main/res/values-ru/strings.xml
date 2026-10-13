@@ -528,4 +528,19 @@
     <string name="subs_add_err_code">Ответ сервера: HTTP %1$d</string>
     <string name="subs_add_err_provider">Сообщение от провайдера</string>
     <string name="subs_adding">Добавление…</string>
+
+    <!-- Onboarding (first run). Brand name comes from app_name via %1$s. -->
+    <string name="onboarding_step_state">Шаг %1$d из %2$d</string>
+    <string name="onboarding_continue">Продолжить</string>
+    <string name="onboarding_welcome_title">Добро пожаловать в %1$s</string>
+    <string name="onboarding_welcome_body">%1$s подключается к серверам, которые вы добавляете сами, и направляет через них трафик приложений, которые вы пускаете через VPN (по умолчанию — всех). Собственных серверов и аналитики у приложения нет.</string>
+    <string name="onboarding_subscription_title">Ваша подписка</string>
+    <string name="onboarding_subscription_body">Добавьте ссылку подписки или QR-код от провайдера. Ссылки хранятся только на этом устройстве. Чтобы получить подписку, приложение отправляет ссылку на сервер вашего провайдера, поэтому провайдер видит запрос и ваш IP-адрес.</string>
+    <string name="onboarding_subscription_hwid">Если вы разрешите, приложение также передаст провайдеру случайный идентификатор установки (HWID) с моделью устройства и версией ОС. Пока вы не выбрали, ничего не отправляется; при добавлении первой подписки вас спросят.</string>
+    <string name="onboarding_vpn_title">VPN-подключение</string>
+    <string name="onboarding_vpn_route">При первом подключении Android попросит разрешить VPN-подключение. Пока оно включено, трафик приложений, которые вы пускаете через VPN, идёт через выбранный сервер, и его оператор видит, куда идёт трафик, а также его содержимое, если оно не зашифровано.</string>
+    <string name="onboarding_vpn_privacy">Приложение не собирает и не продаёт ваш трафик. Собственных серверов и аналитики у него нет.</string>
+    <string name="onboarding_vpn_checks">Для проверки соединения приложение обращается к api.ipify.org — стороннему сервису, который видит IP-адрес вашего сервера, — и отправляет DNS-запрос для example.com.</string>
+    <string name="onboarding_notifications_title">Уведомления</string>
+    <string name="onboarding_notifications_body">Пока VPN включён, приложение показывает уведомление о состоянии. Разрешить уведомления можно позже в настройках; VPN работает и без них.</string>
 </resources>
