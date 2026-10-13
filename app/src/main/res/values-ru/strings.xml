@@ -282,7 +282,7 @@
         <item quantity="many">Без VPN: %1$d приложений</item>
         <item quantity="other">Без VPN: %1$d приложения</item>
     </plurals>
-    <string name="home_auto_subtitle">Быстрый доступный сервер</string>
+    <string name="home_auto_subtitle">Автоматически выбирает доступный сервер с низкой задержкой</string>
 
     <!-- Servers -->
     <string name="servers_search_hint">Поиск по имени или серверу</string>
