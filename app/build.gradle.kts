@@ -42,6 +42,16 @@ android {
             )
         }
     }
+    // libbox ships large native binaries for each ABI. Separate APKs keep
+    // a phone download from carrying desktop/emulator libraries it cannot use.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = false
+        }
+    }
     bundle {
         language {
             enableSplit = false
