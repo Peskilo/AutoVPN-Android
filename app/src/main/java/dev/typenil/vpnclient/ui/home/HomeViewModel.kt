@@ -458,7 +458,17 @@ class HomeViewModel
         /** Dismiss the "pick not applied" notice. */
         fun dismissSelectionNotice() = connectionManager.clearSelectionError()
 
-        fun connect() = connectionManager.connect()
+        /**
+         * Every manual connect starts in Auto mode so the engine's urltest
+         * selector chooses the best eligible server instead of reusing an
+         * old manually pinned node.
+         */
+        fun connect() {
+            viewModelScope.launch {
+                settings.setSelectedNodeId(NodeSelection.AUTO_ID)
+                connectionManager.connect()
+            }
+        }
 
         fun disconnect() = connectionManager.disconnect()
 
