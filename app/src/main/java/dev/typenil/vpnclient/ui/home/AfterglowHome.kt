@@ -376,7 +376,7 @@ internal fun AfterglowHomeContent(
                     stringResource(R.string.nav_subscriptions), stringResource(R.string.afterglow_subscriptions_enabled, ui.enabledSubscriptionCount), onOpenSubscriptions)
             }
 
-            if (connected) {
+            if (state is VpnConnectionState.Connected) {
                 Column(
                     Modifier.fillMaxWidth().clip(cardShape).background(Color.White)
                         .border(1.dp, Color(0xFFE9EDF6), cardShape).padding(16.dp),
