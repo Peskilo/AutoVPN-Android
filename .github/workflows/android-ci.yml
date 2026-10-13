@@ -61,9 +61,33 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: autovpn-debug-arm64-v8a
           path: |
-            app/build/outputs/autovpn-debug-apks/*.apk
+            app/build/outputs/autovpn-debug-apks/app-arm64-v8a-debug.apk
+            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autovpn-debug-armeabi-v7a
+          path: |
+            app/build/outputs/autovpn-debug-apks/app-armeabi-v7a-debug.apk
+            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autovpn-debug-x86
+          path: |
+            app/build/outputs/autovpn-debug-apks/app-x86-debug.apk
+            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autovpn-debug-x86_64
+          path: |
+            app/build/outputs/autovpn-debug-apks/app-x86_64-debug.apk
             app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
           if-no-files-found: error
 
