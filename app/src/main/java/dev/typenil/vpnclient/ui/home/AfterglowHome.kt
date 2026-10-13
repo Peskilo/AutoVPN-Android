@@ -108,42 +108,54 @@ private fun VpnConnectionState.visual() = when (this) {
     is VpnConnectionState.Error -> VisualState.Error
 }
 
-private const val GOKU_BASE_URL =
-    "https://computerscience.johncabot.edu/kduong/S2020CS130-1/gkgole/final_project/images/goku.png"
-private const val GOKU_SSJ_URL =
-    "https://image.pngaaa.com/397/3383397-middle.png"
+private val GOKU_BASE_URLS = listOf(
+    "https://static.wikia.nocookie.net/character-stats-and-profiles/images/3/38/GokuBaseBoZ.webp/revision/latest?cb=20240722022954",
+    "https://i.pinimg.com/736x/59/67/90/596790fb52e5717dae42c6ad891c9655.jpg",
+    "https://i.pinimg.com/736x/ea/98/2a/ea982a234be505557326fe4704b8d8f5.jpg",
+    "https://i.pinimg.com/736x/22/59/0f/22590fc64a23d3f85d9583d3dc0c85c5.jpg",
+)
+private val GOKU_SSJ_URLS = listOf(
+    "https://i.pinimg.com/736x/22/59/0f/22590fc64a23d3f85d9583d3dc0c85c5.jpg",
+    "https://i.pinimg.com/736x/ea/98/2a/ea982a234be505557326fe4704b8d8f5.jpg",
+    "https://i.pinimg.com/736x/59/67/90/596790fb52e5717dae42c6ad891c9655.jpg",
+    "https://static.wikia.nocookie.net/character-stats-and-profiles/images/3/38/GokuBaseBoZ.webp/revision/latest?cb=20240722022954",
+)
 
 /**
- * Uses real transparent PNG artwork from existing image hosts. Do not try to
- * key out white pixels: that damages highlights and hair. Both sources are
- * PNGs advertised as transparent-background artwork.
+ * Tries the user-provided Goku art links in order. Image loading is asynchronous;
+ * the local Sayan/Goku vector remains visible if a host is unavailable.
  */
 @Composable
 private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
-    val imageUrl = if (isSuperSaiyan) GOKU_SSJ_URL else GOKU_BASE_URL
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = imageUrl) {
+    val imageUrls = if (isSuperSaiyan) GOKU_SSJ_URLS else GOKU_BASE_URLS
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = imageUrls) {
         value = withContext(Dispatchers.IO) {
-            runCatching {
-                val connection = URL(imageUrl).openConnection().apply {
-                    connectTimeout = 5000
-                    readTimeout = 8000
-                    setRequestProperty("User-Agent", "SayanVPN/1.0")
-                }
-                connection.getInputStream().use {
-                    BitmapFactory.decodeStream(it)?.asImageBitmap()
-                }
-            }.getOrNull()
+            imageUrls.firstNotNullOfOrNull { imageUrl ->
+                runCatching {
+                    val connection = URL(imageUrl).openConnection().apply {
+                        connectTimeout = 5000
+                        readTimeout = 8000
+                        setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) SayanVPN/1.0")
+                    }
+                    connection.getInputStream().use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                }.getOrNull()
+            }
         }
     }
     Box(modifier, contentAlignment = Alignment.Center) {
-        // Keep the area transparent while the original PNG loads; no hand-drawn
-        // substitute and no destructive background-removal filter.
-        bitmap?.let {
+        if (bitmap != null) {
             Image(
-                bitmap = it,
-                contentDescription = null,
+                bitmap = bitmap!!,
+                contentDescription = "Goku",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Image(
+                painter = painterResource(R.drawable.ic_sayan_mark),
+                contentDescription = "Goku",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(0.62f),
             )
         }
     }
@@ -263,20 +275,16 @@ internal fun AfterglowHomeContent(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(184.dp)
-                        .shadow(14.dp, CircleShape, ambientColor = accent.copy(alpha = 0.25f), spotColor = accent.copy(alpha = 0.25f))
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(1.5.dp, accent, CircleShape)
+                        .fillMaxWidth()
+                        .height(232.dp)
                         .clickable(enabled = !busy && !noServers) {
                             if (connected) onDisconnect() else onConnect()
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_sayan_mark),
-                        contentDescription = null,
-                        modifier = Modifier.size(104.dp),
+                    GokuArtwork(
+                        isSuperSaiyan = connected,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
                 Spacer(Modifier.height(16.dp))
