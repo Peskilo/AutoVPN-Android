@@ -33,6 +33,12 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import android.graphics.BitmapFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URL
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -99,6 +105,49 @@ private fun VpnConnectionState.visual() = when (this) {
     is VpnConnectionState.Reconnecting -> VisualState.Reconnecting
     VpnConnectionState.Stopping -> VisualState.Stopping
     is VpnConnectionState.Error -> VisualState.Error
+}
+
+private const val GOKU_BASE_URL =
+    "https://i.pinimg.com/originals/7f/50/db/7f50dbca7273e7a3efe0fbe617811c5.jpg"
+private const val GOKU_SSJ_URL =
+    "https://www.pngkey.com/png/detail/350-3506303_super-saiyan-goku.png"
+
+/** Goku artwork is fetched off the main thread; a failed image never affects VPN connectivity. */
+@Composable
+private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
+    val imageUrl = if (isSuperSaiyan) GOKU_SSJ_URL else GOKU_BASE_URL
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = imageUrl) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val connection = URL(imageUrl).openConnection().apply {
+                    connectTimeout = 4500
+                    readTimeout = 6000
+                    setRequestProperty("User-Agent", "SayanVPN/1.0")
+                }
+                connection.getInputStream().use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+            }.getOrNull()
+        }
+    }
+    Box(modifier, contentAlignment = Alignment.Center) {
+        if (isSuperSaiyan) {
+            Canvas(Modifier.matchParentSize()) {
+                val center = Offset(size.width * .56f, size.height * .55f)
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(Color(0x88FFD54F), Color(0x44FF9800), Color.Transparent),
+                        center = center,
+                        radius = size.maxDimension * .58f,
+                    ),
+                    radius = size.maxDimension * .58f,
+                    center = center,
+                )
+            }
+        }
+        bitmap?.let {
+            Image(bitmap = it, contentDescription = null, contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize())
+        }
+    }
 }
 
 @Composable
@@ -289,10 +338,7 @@ private fun ConnectionHero(
         Spacer(Modifier.fillMaxWidth().height(heroMin.dp))
         // Decorative artwork never participates in the hero's measurement.
         Box(Modifier.matchParentSize()) {
-            Image(painterResource(R.drawable.afterglow_mascot), contentDescription = null,
-                contentScale = ContentScale.Crop,
-                // Large fonts widen the headline — the art shrinks (bottom-right) instead of
-                // sitting under the text; unchanged at fontScale <= 1.3.
+            GokuArtwork(isSuperSaiyan = connected,
                 modifier = Modifier.fillMaxHeight(artScale).aspectRatio(1f)
                     .align(Alignment.BottomEnd).offset(x = 18.dp)
                     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -362,16 +408,6 @@ private fun ConnectionAction(state: VisualState, noServers: Boolean, onConnect: 
         else -> stringResource(R.string.home_status_connecting)
     }
     val accent = colors.stateColors(state.tone()).accent
-    // Companion face per state: idle=sad, connecting/transition=thinking,
-    // error=crossed-eyes, connected=happy. The peer mascot perches on the
-    // button's top edge (negative offset keeps it overlapping, not inside).
-    val companion = when {
-        noServers -> R.drawable.companion_idle
-        state == VisualState.Connected -> R.drawable.companion_connected
-        state == VisualState.Error -> R.drawable.companion_error
-        state == VisualState.Offline || state == VisualState.Stopping -> R.drawable.companion_idle
-        else -> R.drawable.companion_connecting
-    }
     // Subtitle only for stable states; transitional states already name the
     // action in the title, so a static "VPN OFF/ON" subtitle would misreport.
     val subtitle = when {
@@ -389,17 +425,6 @@ private fun ConnectionAction(state: VisualState, noServers: Boolean, onConnect: 
         label = "Connection accent")
     val gradientEnd by animateColorAsState(lerp(colors.actionSurface, tint, .4f),
         animationSpec = tween(AfterglowTokens.motionEmphasized), label = "Connection surface")
-    var shownFace by remember { mutableIntStateOf(companion) }
-    val faceAlpha = remember { Animatable(1f) }
-    LaunchedEffect(companion) {
-        if (shownFace != companion) {
-            // Swap one sprite while invisible: crossfading two expressions made
-            // overlapping eyes and paws look like a flicker during quick states.
-            faceAlpha.animateTo(0f, tween(AfterglowTokens.motionFast))
-            shownFace = companion
-            faceAlpha.animateTo(1f, tween(AfterglowTokens.motionEmphasized))
-        }
-    }
     // Decorative mascot earns its pad only on tall-enough screens; on
     // landscape/short heights it leaves so the CTA keeps usable viewport.
     val shortWindow = isShortWindow(LocalConfiguration.current.screenHeightDp)
@@ -438,14 +463,9 @@ private fun ConnectionAction(state: VisualState, noServers: Boolean, onConnect: 
         // Transparent sprite padding lets the paws rest just inside the edge;
         // the label column still owns the row — no in-row mascot spacer.
         if (showMascot) {
-            Image(painterResource(shownFace), contentDescription = null,
+            GokuArtwork(isSuperSaiyan = state == VisualState.Connected,
                 modifier = Modifier.align(Alignment.TopEnd).padding(end = 7.dp).offset(y = (-52).dp)
-                    .height(72.dp).graphicsLayer {
-                        alpha = faceAlpha.value
-                        scaleX = .97f + .03f * faceAlpha.value
-                        scaleY = scaleX
-                        translationY = (1f - faceAlpha.value) * 4.dp.toPx()
-                    })
+                    .size(width = 72.dp, height = 82.dp))
         }
     }
 }
