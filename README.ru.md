@@ -1,4 +1,4 @@
-# Yuyake — VPN-клиент для Android
+# AutoVPN — VPN-клиент для Android
 
 [English](README.md) · **Русский**
 
@@ -6,7 +6,7 @@
 > Дизайн не финальный: интерфейс, функции и скриншоты ниже могут измениться в
 > любой момент. Возможны шероховатости. В Google Play пока нет.
 
-VPN/прокси-клиент для Android на ядре **sing-box** (libbox). Добавьте ссылку на
+AutoVPN — VPN/прокси-клиент для Android на ядре **sing-box** (libbox). Добавьте ссылку на
 подписку, выберите сервер, нажмите «Подключить». Kotlin, Jetpack Compose
 (Material 3), coroutines/Flow, Hilt, Room, DataStore, OkHttp.
 
