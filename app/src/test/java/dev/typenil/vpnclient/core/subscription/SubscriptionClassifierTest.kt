@@ -24,6 +24,14 @@ class SubscriptionClassifierTest {
     }
 
     @Test
+    fun `UTF-8 BOM does not prevent plain URI list detection`() {
+        val body = "\uFEFFvless://11111111-2222-3333-4444-555555555555@a.example.com:443#x"
+        val c = classify(body)
+        assertEquals(SubscriptionFormat.UriList, c.format)
+        assertEquals(body.removePrefix("\uFEFF"), c.body)
+    }
+
+    @Test
     fun `base64 wrapped uri list is detected and decoded`() {
         val plain = "trojan://pw@t.example.com:443#n\nss://aes-256-gcm:pw@s.example.com:8388"
         val encoded = Base64.getEncoder().encodeToString(plain.toByteArray())
