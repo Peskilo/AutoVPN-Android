@@ -1,5 +1,8 @@
 # Yuyake — Android VPN client
 
+> **🚧 Under development.** The app works, but it is not finished or released:
+> expect rough edges and changes. Not on Google Play yet.
+
 An Android VPN/proxy client built on the **sing-box** core (libbox). Add a
 subscription link, pick a server, tap connect. Kotlin, Jetpack Compose
 (Material 3), coroutines/Flow, Hilt, Room, DataStore, OkHttp.
@@ -45,7 +48,7 @@ decorative "Connected".
 
 ## Status
 
-A working client, runs on the author's phone. Not yet on Google Play.
+Under active development. The client works and runs on the author's phone, but is not finished and not on Google Play.
 Still open: first-run onboarding, a published privacy policy URL, and a
 decision on the artwork/mascot licence. Details are in `docs/`.
 
