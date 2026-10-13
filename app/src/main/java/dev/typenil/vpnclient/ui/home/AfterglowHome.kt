@@ -435,7 +435,7 @@ private fun ConnectionHero(
     val fontScale = LocalDensity.current.fontScale
     val largeFont = fontScale > 1.3f
     // Landscape keeps a working viewport — compact hero, same type sizes.
-    val heroMin = if (isShortWindow(LocalConfiguration.current.screenHeightDp)) 128f else 164f
+    val heroMin = if (isShortWindow(LocalConfiguration.current.screenHeightDp)) 176f else 238f
     val heroMinEff = if (largeFont) heroMin + (fontScale - 1.3f) * 85f else heroMin
     val artScale = heroArtScale(fontScale)
     // The art is as tall as the hero, which grows with wrapped text at large fonts — the hint cap
