@@ -13,21 +13,6 @@ AutoVPN — VPN/прокси-клиент для Android на ядре **sing-bo
 Работает с панелями [Remnawave](https://docs.rw/) и с обычными подписками из
 ссылок на серверы (VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC).
 
-<p>
-  <img src="docs/screenshots/home-connected.png" width="240" alt="Подключено, живой трафик">
-  <img src="docs/screenshots/servers.png" width="240" alt="Серверы с задержкой">
-  <img src="docs/screenshots/routing.png" width="240" alt="Настройки маршрутизации">
-</p>
-<p>
-  <img src="docs/screenshots/home-idle.png" width="240" alt="Главный экран, отключено">
-  <img src="docs/screenshots/subscriptions.png" width="240" alt="Подписки">
-  <img src="docs/screenshots/home-dark.png" width="240" alt="Тёмная тема">
-</p>
-
-Скриншоты сняты на эмуляторе Android с локальной демо-подпиской и синтетическими
-данными (выдуманные серверы и расход трафика) и показывают текущий, не
-финальный дизайн. Интерфейс приложения на скриншотах английский;
-русский язык в приложении тоже есть.
 
 ## Что умеет
 
