@@ -19,7 +19,8 @@ class SubscriptionClassifier @Inject constructor() {
     )
 
     fun classify(body: ByteArray, contentType: String?): Classified {
-        val text = body.toString(Charsets.UTF_8).trim()
+        // Some panels prepend a UTF-8 BOM; remove it before format detection.
+        val text = body.toString(Charsets.UTF_8).removePrefix("\uFEFF").trim()
         if (text.isEmpty()) throw SubscriptionError.EmptyResult()
 
         return when {
@@ -67,7 +68,7 @@ class SubscriptionClassifier @Inject constructor() {
         }.recoverCatching {
             java.util.Base64.getUrlDecoder().decode(compact)
         }.getOrNull() ?: return null
-        val decodedText = decoded.toString(Charsets.UTF_8).trim()
+        val decodedText = decoded.toString(Charsets.UTF_8).removePrefix("\uFEFF").trim()
         return when {
             looksLikeUriList(decodedText) -> Classified(SubscriptionFormat.Base64UriList, decodedText)
             looksLikeJson(decodedText) -> classifyJson(decodedText)
