@@ -14,20 +14,6 @@ It works with [Remnawave](https://docs.rw/) panels and with generic
 subscriptions made of share links (VLESS, VMess, Trojan, Shadowsocks,
 Hysteria2, TUIC).
 
-<p>
-  <img src="docs/screenshots/home-connected.png" width="240" alt="Connected, live traffic">
-  <img src="docs/screenshots/servers.png" width="240" alt="Servers with latency">
-  <img src="docs/screenshots/routing.png" width="240" alt="Routing settings">
-</p>
-<p>
-  <img src="docs/screenshots/home-idle.png" width="240" alt="Home, disconnected">
-  <img src="docs/screenshots/subscriptions.png" width="240" alt="Subscriptions">
-  <img src="docs/screenshots/home-dark.png" width="240" alt="Dark theme">
-</p>
-
-Screenshots are taken on an Android emulator with a local demo subscription and
-synthetic data (made-up servers and usage) and show the current, non-final
-design.
 
 ## What it does
 
