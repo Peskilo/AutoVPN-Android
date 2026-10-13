@@ -1,8 +1,8 @@
 <resources>
     <!-- Single source of the product name. Rename here only (see docs/UI-AUDIT.md). -->
-    <string name="brand_name" translatable="false">Yuyake</string>
+    <string name="brand_name" translatable="false">AutoVPN</string>
     <!-- Home wordmark; the accent dot after it is drawn in code. -->
-    <string name="brand_wordmark" translatable="false">YUYAKE</string>
+    <string name="brand_wordmark" translatable="false">AUTOVPN</string>
     <string name="app_name" translatable="false">@string/brand_name</string>
     <string name="format_unit_b">B</string>
     <string name="format_unit_kb">KB</string>
