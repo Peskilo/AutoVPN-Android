@@ -57,14 +57,17 @@ jobs:
               exit 1
             fi
           done
-          sha256sum "${apks[@]}" | tee "$apk_dir/SHA256SUMS.txt"
+          for apk in "${apks[@]}"; do
+            name="$(basename "$apk")"
+            (cd "$apk_dir" && sha256sum "$name" > "$name.sha256")
+          done
 
       - uses: actions/upload-artifact@v4
         with:
           name: autovpn-debug-arm64-v8a
           path: |
             app/build/outputs/autovpn-debug-apks/app-arm64-v8a-debug.apk
-            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+            app/build/outputs/autovpn-debug-apks/app-arm64-v8a-debug.apk.sha256
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
@@ -72,7 +75,7 @@ jobs:
           name: autovpn-debug-armeabi-v7a
           path: |
             app/build/outputs/autovpn-debug-apks/app-armeabi-v7a-debug.apk
-            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+            app/build/outputs/autovpn-debug-apks/app-armeabi-v7a-debug.apk.sha256
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
@@ -80,7 +83,7 @@ jobs:
           name: autovpn-debug-x86
           path: |
             app/build/outputs/autovpn-debug-apks/app-x86-debug.apk
-            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+            app/build/outputs/autovpn-debug-apks/app-x86-debug.apk.sha256
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
@@ -88,6 +91,6 @@ jobs:
           name: autovpn-debug-x86_64
           path: |
             app/build/outputs/autovpn-debug-apks/app-x86_64-debug.apk
-            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
+            app/build/outputs/autovpn-debug-apks/app-x86_64-debug.apk.sha256
           if-no-files-found: error
 
