@@ -25,32 +25,50 @@ jobs:
       - name: Lint
         run: ./gradlew lint --stacktrace
 
-      - name: Debug APK
-        run: ./gradlew assembleDebug assembleDebugAndroidTest --stacktrace
+      - name: Build ABI-specific debug APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="app/build/outputs/autovpn-debug-apks"
+          mkdir -p "$out"
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            rm -f app/build/outputs/apk/debug/app-debug.apk
+            ./gradlew assembleDebug -PautovpnAbi="$abi" --stacktrace
+            cp app/build/outputs/apk/debug/app-debug.apk "$out/app-$abi-debug.apk"
+          done
 
       - name: Verify installable ABI APKs and write SHA-256
         shell: bash
         run: |
           set -euo pipefail
-          apk_dir="app/build/outputs/apk/debug"
+          apk_dir="app/build/outputs/autovpn-debug-apks"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           test -x "$build_tools/apksigner"
           shopt -s nullglob
           apks=("$apk_dir"/*.apk)
-          test "${#apks[@]}" -gt 0
+          test "${#apks[@]}" -eq 4
           for apk in "${apks[@]}"; do
             test -s "$apk"
             "$build_tools/apksigner" verify --verbose "$apk"
             size="$(stat -c%s "$apk")"
             if (( size > 150 * 1024 * 1024 )); then
-              echo "::error file=$apk::APK unexpectedly exceeds 150 MiB; check ABI splitting"
+              echo "::error file=$apk::APK unexpectedly exceeds 150 MiB; ABI filtering failed"
               exit 1
             fi
           done
           sha256sum "${apks[@]}" | tee "$apk_dir/SHA256SUMS.txt"
 
-      - name: Release APK
-        run: ./gradlew assembleRelease --stacktrace
+      - name: Build ABI-specific release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="app/build/outputs/autovpn-release-apks"
+          mkdir -p "$out"
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            rm -f app/build/outputs/apk/release/app-release.apk
+            ./gradlew assembleRelease -PautovpnAbi="$abi" --stacktrace
+            cp app/build/outputs/apk/release/app-release.apk "$out/app-$abi-release.apk"
+          done
 
       - name: Release AAB
         run: ./gradlew bundleRelease --stacktrace
@@ -59,14 +77,14 @@ jobs:
         with:
           name: app-debug
           path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/debug/SHA256SUMS.txt
+            app/build/outputs/autovpn-debug-apks/*.apk
+            app/build/outputs/autovpn-debug-apks/SHA256SUMS.txt
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/autovpn-release-apks/*.apk
           if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v4
