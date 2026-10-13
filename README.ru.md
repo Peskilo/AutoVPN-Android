@@ -1,4 +1,4 @@
-# AutoVPN — VPN-клиент для Android
+# SayanVPN — VPN-клиент для Android
 
 [English](README.md) · **Русский**
 
@@ -6,7 +6,7 @@
 > Дизайн не финальный: интерфейс и функции могут измениться в любой момент.
 > Возможны шероховатости. В Google Play пока нет.
 
-AutoVPN — VPN/прокси-клиент для Android на ядре **sing-box** (libbox). Добавьте ссылку на
+SayanVPN — VPN/прокси-клиент для Android на ядре **sing-box** (libbox). Добавьте ссылку на
 подписку, выберите сервер, нажмите «Подключить». Kotlin, Jetpack Compose
 (Material 3), coroutines/Flow, Hilt, Room, DataStore, OkHttp.
 
@@ -49,8 +49,8 @@ AutoVPN — VPN/прокси-клиент для Android на ядре **sing-bo
 
 ## Как скачать тестовый APK
 
-1. Откройте [запуски Android CI](https://github.com/Peskilo/AutoVPN-Android/actions/workflows/android-ci.yml) и выберите последний успешный запуск для ветки `main`.
-2. В разделе **Artifacts** скачайте только один архив под архитектуру телефона: `autovpn-debug-arm64-v8a` (обычно современные телефоны) или `autovpn-debug-armeabi-v7a` (старые 32-битные устройства). `x86` и `x86_64` обычно нужны эмуляторам.
+1. Откройте [запуски Android CI](https://github.com/Peskilo/SayanVPN-Android/actions/workflows/android-ci.yml) и выберите последний успешный запуск для ветки `main`.
+2. В разделе **Artifacts** скачайте только один архив под архитектуру телефона: `sayanvpn-debug-arm64-v8a` (обычно современные телефоны) или `sayanvpn-debug-armeabi-v7a` (старые 32-битные устройства). `x86` и `x86_64` обычно нужны эмуляторам.
 3. Выберите APK под архитектуру устройства. Для большинства современных телефонов подходит `arm64-v8a`; `armeabi-v7a` предназначен для старых 32-битных ARM-устройств; `x86_64` и `x86` обычно нужны эмуляторам.
 4. Рядом с APK находится файл `.sha256`. После распаковки проверьте его командой `sha256sum -c app-arm64-v8a-debug.apk.sha256` (замените имя на скачанную архитектуру).
 
