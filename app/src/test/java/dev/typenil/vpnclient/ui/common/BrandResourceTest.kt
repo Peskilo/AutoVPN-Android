@@ -19,8 +19,8 @@ class BrandResourceTest {
 
     @Test fun `brand names keep their visible values`() {
         val en = strings("values")
-        assertEquals("Yuyake", en["brand_name"])
-        assertEquals("YUYAKE", en["brand_wordmark"])
+        assertEquals("AutoVPN", en["brand_name"])
+        assertEquals("AUTOVPN", en["brand_wordmark"])
         assertEquals("@string/brand_name", en["app_name"])
     }
 
