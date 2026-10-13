@@ -374,19 +374,7 @@ internal fun AfterglowHomeContent(
             }
             batteryHint()
 
-            Column(
-                Modifier.fillMaxWidth().clip(cardShape).background(Color.White)
-                    .border(1.dp, Color(0xFFE9EDF6), cardShape),
-            ) {
-                PingwinStyleRow("⇄", Color(0xFF2F6FED), Color(0xFFEAF1FF),
-                    stringResource(R.string.afterglow_routing_title), stringResource(R.string.afterglow_quick_access), onOpenRouting)
-                Box(Modifier.fillMaxWidth().padding(start = 69.dp, end = 16.dp).height(1.dp).background(Color(0xFFE9ECF1)))
-                PingwinStyleRow("◎", Color(0xFF2BAE57), Color(0xFFEAF8EF),
-                    stringResource(R.string.nav_servers), stringResource(R.string.afterglow_servers_available, ui.serverOptions.size), onOpenServers)
-                Box(Modifier.fillMaxWidth().padding(start = 69.dp, end = 16.dp).height(1.dp).background(Color(0xFFE9ECF1)))
-                PingwinStyleRow("▤", Color(0xFF2F6FED), Color(0xFFEAF1FF),
-                    stringResource(R.string.nav_subscriptions), stringResource(R.string.afterglow_subscriptions_enabled, ui.enabledSubscriptionCount), onOpenSubscriptions)
-            }
+            // Minimal home: advanced options are intentionally hidden here.
 
             if (state is VpnConnectionState.Connected) {
                 Column(
@@ -425,36 +413,6 @@ internal fun AfterglowHomeContent(
                 }
             }
             Spacer(Modifier.height(12.dp))
-        }
-        Row(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .fillMaxWidth().widthIn(max = 560.dp)
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-                .navigationBarsPadding()
-                .clip(RoundedCornerShape(26.dp))
-                .background(Color.White)
-                .border(1.dp, Color(0xFFE9EDF6), RoundedCornerShape(26.dp))
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFFE9EEFF)).padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("⌂", fontSize = 22.sp, color = Color(0xFF2450C8))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.nav_home), color = Color(0xFF2450C8), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Row(
-                Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                    .clickable { onOpenSettings() }.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Settings, contentDescription = null, tint = Color(0xFF555B67))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.nav_settings), color = Color(0xFF555B67), fontSize = 15.sp)
-            }
         }
     }
 }
@@ -800,12 +758,10 @@ private fun ServerAndRouting(ui: HomeUiState, onPick: () -> Unit, onAdd: () -> U
             ?.substringAfter("→", "")?.trim()?.takeIf { it.isNotBlank() }
     } else null
     val title = when {
-        // The hero already says "No servers"; the card carries the one action hint.
-        noServers -> stringResource(
-            if (ui.noNodesAtAll) R.string.common_add_servers_hint else R.string.afterglow_no_usable_servers,
-        )
+        // Auto is a mode, not an error description.
+        ui.autoSelected -> stringResource(R.string.afterglow_auto)
+        noServers -> stringResource(R.string.common_add_servers_hint)
         autoResolved != null -> autoResolved
-        ui.autoSelected -> stringResource(R.string.home_auto_subtitle)
         else -> ui.selectedNodeName ?: live?.name ?: stringResource(R.string.home_no_server_selected)
     }
     val protocolLabel = if (ui.autoSelected) null else (ui.selectedNodeProtocol ?: live?.protocol?.label)
