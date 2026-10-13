@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -112,7 +113,38 @@ private const val GOKU_BASE_URL =
 private const val GOKU_SSJ_URL =
     "https://www.pngkey.com/png/detail/350-3506303_super-saiyan-goku.png"
 
-/** Goku artwork is fetched off the main thread; a failed image never affects VPN connectivity. */
+/**
+ * The source art has a near-white matte (the base image is a JPG). Convert
+ * near-white, low-saturation pixels to transparency so the character blends
+ * into the hero card instead of appearing inside a white rectangle.
+ */
+private fun removeLightBackground(source: Bitmap): Bitmap {
+    val bitmap = source.copy(Bitmap.Config.ARGB_8888, true)
+    val width = bitmap.width
+    val height = bitmap.height
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+    for (i in pixels.indices) {
+        val pixel = pixels[i]
+        val alpha = pixel ushr 24 and 0xff
+        if (alpha == 0) continue
+        val red = pixel ushr 16 and 0xff
+        val green = pixel ushr 8 and 0xff
+        val blue = pixel and 0xff
+        val brightest = maxOf(red, green, blue)
+        val darkest = minOf(red, green, blue)
+        val chroma = brightest - darkest
+        if (darkest > 192 && chroma < 34) {
+            val keep = ((238 - darkest) / 46f).coerceIn(0f, 1f)
+            val newAlpha = (alpha * keep).toInt()
+            pixels[i] = (newAlpha shl 24) or (red shl 16) or (green shl 8) or blue
+        }
+    }
+    bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+    return bitmap
+}
+
+/** Goku art loads off-main-thread; a local stylized fallback always shows the correct form. */
 @Composable
 private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
     val imageUrl = if (isSuperSaiyan) GOKU_SSJ_URL else GOKU_BASE_URL
@@ -124,11 +156,87 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
                     readTimeout = 6000
                     setRequestProperty("User-Agent", "SayanVPN/1.0")
                 }
-                connection.getInputStream().use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                connection.getInputStream().use {
+                    BitmapFactory.decodeStream(it)?.let(::removeLightBackground)?.asImageBitmap()
+                }
             }.getOrNull()
         }
     }
     Box(modifier, contentAlignment = Alignment.Center) {
+        // Never leave the hero empty if a third-party image host is offline.
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val cx = w * .60f
+            val skin = Color(0xFFF0B98D)
+            val hair = if (isSuperSaiyan) Color(0xFFFFD83D) else Color(0xFF17151D)
+            val hairShadow = if (isSuperSaiyan) Color(0xFFF59E0B) else Color(0xFF34303A)
+            val gi = Color(0xFFEF762F)
+            val blue = Color(0xFF1769B1)
+            // Gi and shoulders.
+            val torso = Path().apply {
+                moveTo(cx - w * .19f, h * .63f)
+                lineTo(cx + w * .17f, h * .63f)
+                lineTo(cx + w * .36f, h * .99f)
+                lineTo(cx - w * .37f, h * .99f)
+                close()
+            }
+            drawPath(torso, gi)
+            drawPath(Path().apply {
+                moveTo(cx - w * .12f, h * .67f)
+                lineTo(cx + w * .10f, h * .67f)
+                lineTo(cx + w * .20f, h * .99f)
+                lineTo(cx - w * .22f, h * .99f)
+                close()
+            }, blue)
+            // Spiky silhouette behind the face.
+            val spikes = Path().apply {
+                moveTo(cx - w * .23f, h * .43f)
+                lineTo(cx - w * .37f, h * .22f)
+                lineTo(cx - w * .19f, h * .27f)
+                lineTo(cx - w * .24f, h * .08f)
+                lineTo(cx - w * .04f, h * .20f)
+                lineTo(cx + w * .03f, h * .015f)
+                lineTo(cx + w * .12f, h * .19f)
+                lineTo(cx + w * .29f, h * .08f)
+                lineTo(cx + w * .25f, h * .27f)
+                lineTo(cx + w * .40f, h * .22f)
+                lineTo(cx + w * .25f, h * .47f)
+                close()
+            }
+            drawPath(spikes, hair)
+            drawOval(skin, topLeft = Offset(cx - w * .20f, h * .24f),
+                size = androidx.compose.ui.geometry.Size(w * .40f, h * .39f))
+            // Fringe makes the silhouette read as Goku rather than a generic face.
+            drawPath(Path().apply {
+                moveTo(cx - w * .22f, h * .35f)
+                lineTo(cx - w * .18f, h * .19f)
+                lineTo(cx - w * .07f, h * .30f)
+                lineTo(cx + w * .015f, h * .16f)
+                lineTo(cx + w * .08f, h * .30f)
+                lineTo(cx + w * .19f, h * .20f)
+                lineTo(cx + w * .23f, h * .36f)
+                lineTo(cx + w * .10f, h * .32f)
+                lineTo(cx + w * .02f, h * .37f)
+                lineTo(cx - w * .07f, h * .32f)
+                close()
+            }, hairShadow)
+            // Eyes, brows and a confident expression.
+            drawLine(Color(0xFF27202A), Offset(cx - w * .14f, h * .43f),
+                Offset(cx - w * .045f, h * .425f), strokeWidth = w * .018f, cap = StrokeCap.Round)
+            drawLine(Color(0xFF27202A), Offset(cx + w * .045f, h * .425f),
+                Offset(cx + w * .14f, h * .43f), strokeWidth = w * .018f, cap = StrokeCap.Round)
+            drawLine(Color(0xFF27202A), Offset(cx - w * .09f, h * .47f),
+                Offset(cx - w * .045f, h * .47f), strokeWidth = w * .012f, cap = StrokeCap.Round)
+            drawLine(Color(0xFF27202A), Offset(cx + w * .045f, h * .47f),
+                Offset(cx + w * .09f, h * .47f), strokeWidth = w * .012f, cap = StrokeCap.Round)
+            drawLine(Color(0xFF8C3F35), Offset(cx - w * .06f, h * .55f),
+                Offset(cx + w * .06f, h * .55f), strokeWidth = w * .012f, cap = StrokeCap.Round)
+            if (isSuperSaiyan) {
+                drawLine(Color(0xFFFFF1A8), Offset(cx - w * .29f, h * .12f),
+                    Offset(cx + w * .28f, h * .10f), strokeWidth = w * .025f, cap = StrokeCap.Round)
+            }
+        }
         if (isSuperSaiyan) {
             Canvas(Modifier.matchParentSize()) {
                 val center = Offset(size.width * .56f, size.height * .55f)
