@@ -37,3 +37,10 @@ vpnclient-test-subscriptions.txt
 build/*.png
 research_1/
 research_2/
+
+# Internal working docs (kept locally, not published)
+/AGENTS.md
+/ANDROID_VPN_CLIENT_PROJECT_BRIEF.md
+/docs/*
+!/docs/screenshots/
+!/docs/LICENSING.md

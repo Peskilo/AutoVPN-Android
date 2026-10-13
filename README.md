@@ -52,7 +52,7 @@ decorative "Connected".
 
 Under active development. The client works and runs on the author's phone, but is not finished and not on Google Play.
 Still open: first-run onboarding, a published privacy policy URL, and a
-decision on the artwork/mascot licence. Details are in `docs/`.
+decision on the artwork/mascot licence.
 
 Verified on a physical phone (Android 16) and an emulator; the build and
 JVM unit tests (parsers, classifier, redaction, state machine) run in CI.
@@ -64,8 +64,6 @@ Anything touching the VPN path is checked on a device, not just in unit tests.
 UI talks to. The sing-box/libbox types live behind a `VpnEngine` boundary in
 `core.engine.singbox`; swapping the core would not touch the UI. Subscriptions go
 through a fetch → classify → parse → validate → commit pipeline.
-See `docs/ARCHITECTURE.md`, `docs/SECURITY.md` and
-`docs/adr/ADR-0001-vpn-core.md`.
 
 ## Build
 
@@ -90,8 +88,7 @@ Requirements (from the build files, not from memory):
 - Android SDK platform 37 (`compileSdk`/`targetSdk` 37), `minSdk` 26.
 - Network access on the first build to fetch the pinned libbox AAR.
 
-Instrumented tests: see `docs/TESTING.md`. Never run `connected*` Gradle tasks
-on a physical device — they uninstall the app and erase its data.
+Never run `connected*` Gradle tasks on a physical device — they uninstall the app and erase its data.
 
 ## Layout
 
