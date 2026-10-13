@@ -75,7 +75,7 @@ class VpnTileService : TileService() {
                 // Before onboarding is done (or while its state is unknown) the tile
                 // only opens the app: connecting would start the VPN consent flow
                 // ahead of the disclosure.
-                if (tileMayConnect(settings.onboardingDone.first())) connectionManager.connect()
+                if (tileMayConnect(settings.onboardingDoneOrNull())) connectionManager.connect()
                 openMain()
             }
         }

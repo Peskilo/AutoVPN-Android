@@ -323,10 +323,16 @@ class SettingsRepository
             context.settingsStore.edit { persistBatteryHintDismissal(it) }
         }
 
-        /** Read errors remain unknown (null): the gate must not flash onboarding on I/O failure. */
-        val onboardingDone: Flow<Boolean?> =
-            context.settingsStore.data.map<Preferences, Boolean?> { onboardingDoneOf(it) }
-                .catch { if (it is IOException) emit(null) else throw it }
+        /** Read errors surface as [IOException]: the onboarding gate retries, then falls back. */
+        val onboardingDone: Flow<Boolean> = context.settingsStore.data.map { onboardingDoneOf(it) }
+
+        /** One-shot read for callers without a retry policy; null = unknown (I/O failure). */
+        suspend fun onboardingDoneOrNull(): Boolean? =
+            try {
+                onboardingDone.first()
+            } catch (_: IOException) {
+                null
+            }
 
         suspend fun markOnboardingDone() {
             context.settingsStore.edit { persistOnboardingDone(it) }

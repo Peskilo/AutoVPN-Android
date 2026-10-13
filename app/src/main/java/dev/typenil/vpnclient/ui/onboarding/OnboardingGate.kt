@@ -17,16 +17,25 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.typenil.vpnclient.core.common.log.SecureLog
 import dev.typenil.vpnclient.data.db.SubscriptionDao
 import dev.typenil.vpnclient.data.settings.SettingsRepository
 import dev.typenil.vpnclient.data.settings.shouldGrandfather
 import dev.typenil.vpnclient.ui.theme.AfterglowTheme
+import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
@@ -34,62 +43,110 @@ import kotlinx.coroutines.launch
 /** What the root shows: a neutral frame, first-run screens, or the app. */
 enum class OnboardingGate { Loading, Needed, Done }
 
+private const val READ_RETRIES = 3
+private const val READ_RETRY_DELAY_MS = 500L
+
 /**
  * Gate state from the persisted flag. A missing flag first asks
  * [isExistingInstall] — an update of a used install is marked done silently
  * instead of showing first-run screens. Nothing here writes the flag for a
- * fresh install; only [OnboardingGateViewModel.finish] does.
+ * fresh install; only [finishOnboarding] does.
+ *
+ * [done] may fail with [IOException]: it is re-read up to [retries] times
+ * [retryDelayMs] apart (Loading meanwhile), then the gate falls back to
+ * [OnboardingGate.Needed] — a repeated first-run screen beats a blank one for
+ * an install whose flag cannot be read. [finished] (the user pressed the last
+ * Continue) opens the app even if the flag could not be written.
  */
 internal fun onboardingGate(
-    done: Flow<Boolean?>,
+    done: Flow<Boolean>,
     isExistingInstall: suspend () -> Boolean,
     markDone: suspend () -> Unit,
-): Flow<OnboardingGate> = done.distinctUntilChanged().transformLatest { flag ->
-    when (flag) {
-        null -> emit(OnboardingGate.Loading)
-        true -> emit(OnboardingGate.Done)
-        false -> {
-            emit(OnboardingGate.Loading)
-            // A failed read means "unknown": showing first-run screens is the safe side.
-            val existing = try {
-                isExistingInstall()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                false
-            }
-            if (existing) {
-                // If the write fails the session still opens; the next launch re-decides.
-                try {
-                    markDone()
+    finished: Flow<Boolean> = flowOf(false),
+    retries: Int = READ_RETRIES,
+    retryDelayMs: Long = READ_RETRY_DELAY_MS,
+): Flow<OnboardingGate> = combine(
+    decide(done, isExistingInstall, markDone, retries, retryDelayMs),
+    finished,
+) { gate, userFinished -> if (userFinished) OnboardingGate.Done else gate }
+
+private fun decide(
+    done: Flow<Boolean>,
+    isExistingInstall: suspend () -> Boolean,
+    markDone: suspend () -> Unit,
+    retries: Int,
+    retryDelayMs: Long,
+): Flow<OnboardingGate> = done
+    .retryWhen { cause, attempt ->
+        (cause is IOException && attempt < retries).also { if (it) delay(retryDelayMs) }
+    }
+    .map<Boolean, Boolean?> { it }
+    .catch { if (it is IOException) emit(null) else throw it }
+    .distinctUntilChanged()
+    .transformLatest { flag ->
+        when (flag) {
+            null -> emit(OnboardingGate.Needed)
+            true -> emit(OnboardingGate.Done)
+            false -> {
+                emit(OnboardingGate.Loading)
+                // A failed read means "unknown": showing first-run screens is the safe side.
+                val existing = try {
+                    isExistingInstall()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
+                    false
                 }
-                emit(OnboardingGate.Done)
-            } else {
-                emit(OnboardingGate.Needed)
+                if (existing) {
+                    // If the write fails the session still opens; the next launch re-decides.
+                    try {
+                        markDone()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                    emit(OnboardingGate.Done)
+                } else {
+                    emit(OnboardingGate.Needed)
+                }
             }
         }
     }
-}
 
 @HiltViewModel
 class OnboardingGateViewModel @Inject constructor(
     private val settings: SettingsRepository,
     subscriptionDao: SubscriptionDao,
 ) : ViewModel() {
+    private val finished = MutableStateFlow(false)
+
     val gate: StateFlow<OnboardingGate> = onboardingGate(
         done = settings.onboardingDone,
         isExistingInstall = {
             shouldGrandfather(false, settings.installEvidence(subscriptionDao.getAll().size))
         },
         markDone = settings::markOnboardingDone,
+        finished = finished,
     ).stateIn(viewModelScope, SharingStarted.Eagerly, OnboardingGate.Loading)
 
     /** The only place a fresh install gets its flag: the last step's Continue. */
     fun finish() {
-        viewModelScope.launch { settings.markOnboardingDone() }
+        viewModelScope.launch { finishOnboarding(finished, settings::markOnboardingDone) }
+    }
+}
+
+/**
+ * Enters the app first, persists second: a failed write must neither block
+ * the user nor crash. The next launch simply asks again.
+ */
+internal suspend fun finishOnboarding(finished: MutableStateFlow<Boolean>, markDone: suspend () -> Unit) {
+    finished.value = true
+    try {
+        markDone()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        SecureLog.w("Onboarding", "could not persist the onboarding flag", e)
     }
 }
 
