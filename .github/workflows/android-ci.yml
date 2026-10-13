@@ -28,16 +28,26 @@ jobs:
       - name: Debug APK
         run: ./gradlew assembleDebug assembleDebugAndroidTest --stacktrace
 
-      - name: Verify installable debug APK and write SHA-256
+      - name: Verify installable ABI APKs and write SHA-256
         shell: bash
         run: |
           set -euo pipefail
-          apk="app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$apk"
+          apk_dir="app/build/outputs/apk/debug"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           test -x "$build_tools/apksigner"
-          "$build_tools/apksigner" verify --verbose "$apk"
-          sha256sum "$apk" | tee app/build/outputs/apk/debug/SHA256SUMS.txt
+          shopt -s nullglob
+          apks=("$apk_dir"/*.apk)
+          test "${#apks[@]}" -gt 0
+          for apk in "${apks[@]}"; do
+            test -s "$apk"
+            "$build_tools/apksigner" verify --verbose "$apk"
+            size="$(stat -c%s "$apk")"
+            if (( size > 150 * 1024 * 1024 )); then
+              echo "::error file=$apk::APK unexpectedly exceeds 150 MiB; check ABI splitting"
+              exit 1
+            fi
+          done
+          sha256sum "${apks[@]}" | tee "$apk_dir/SHA256SUMS.txt"
 
       - name: Release APK
         run: ./gradlew assembleRelease --stacktrace
