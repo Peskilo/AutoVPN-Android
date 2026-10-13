@@ -1,5 +1,7 @@
 # Yuyake — Android VPN client
 
+**English** · [Русский](README.ru.md)
+
 > **🚧 Under development.** The app works, but it is not finished or released.
 > The design is not final and the interface, features and screenshots below
 > may change at any time. Expect rough edges. Not on Google Play yet.
