@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          out="app/build/outputs/autovpn-debug-apks"
+          out="app/build/outputs/sayanvpn-debug-apks"
           mkdir -p "$out"
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do
             rm -f app/build/outputs/apk/debug/app-debug.apk
@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apk_dir="app/build/outputs/autovpn-debug-apks"
+          apk_dir="app/build/outputs/sayanvpn-debug-apks"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           test -x "$build_tools/apksigner"
           shopt -s nullglob
@@ -64,33 +64,33 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: autovpn-debug-arm64-v8a
+          name: sayanvpn-debug-arm64-v8a
           path: |
-            app/build/outputs/autovpn-debug-apks/app-arm64-v8a-debug.apk
-            app/build/outputs/autovpn-debug-apks/app-arm64-v8a-debug.apk.sha256
+            app/build/outputs/sayanvpn-debug-apks/app-arm64-v8a-debug.apk
+            app/build/outputs/sayanvpn-debug-apks/app-arm64-v8a-debug.apk.sha256
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
-          name: autovpn-debug-armeabi-v7a
+          name: sayanvpn-debug-armeabi-v7a
           path: |
-            app/build/outputs/autovpn-debug-apks/app-armeabi-v7a-debug.apk
-            app/build/outputs/autovpn-debug-apks/app-armeabi-v7a-debug.apk.sha256
+            app/build/outputs/sayanvpn-debug-apks/app-armeabi-v7a-debug.apk
+            app/build/outputs/sayanvpn-debug-apks/app-armeabi-v7a-debug.apk.sha256
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
-          name: autovpn-debug-x86
+          name: sayanvpn-debug-x86
           path: |
-            app/build/outputs/autovpn-debug-apks/app-x86-debug.apk
-            app/build/outputs/autovpn-debug-apks/app-x86-debug.apk.sha256
+            app/build/outputs/sayanvpn-debug-apks/app-x86-debug.apk
+            app/build/outputs/sayanvpn-debug-apks/app-x86-debug.apk.sha256
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
-          name: autovpn-debug-x86_64
+          name: sayanvpn-debug-x86_64
           path: |
-            app/build/outputs/autovpn-debug-apks/app-x86_64-debug.apk
-            app/build/outputs/autovpn-debug-apks/app-x86_64-debug.apk.sha256
+            app/build/outputs/sayanvpn-debug-apks/app-x86_64-debug.apk
+            app/build/outputs/sayanvpn-debug-apks/app-x86_64-debug.apk.sha256
           if-no-files-found: error
 
