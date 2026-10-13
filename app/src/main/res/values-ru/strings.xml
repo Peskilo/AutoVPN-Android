@@ -94,6 +94,7 @@
     <string name="nav_servers">Серверы</string>
     <string name="nav_subscriptions">Подписки</string>
     <string name="nav_settings">Настройки</string>
+    <string name="nav_home">Главная</string>
 
     <!-- Common -->
     <string name="common_cancel">Отмена</string>
