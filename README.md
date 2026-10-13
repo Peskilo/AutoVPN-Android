@@ -1,4 +1,4 @@
-# AutoVPN — Android VPN client
+# SayanVPN — Android VPN client
 
 **English** · [Русский](README.ru.md)
 
@@ -6,7 +6,7 @@
 > The design is not final and the interface and features may change at any time.
 > Expect rough edges. Not on Google Play yet.
 
-AutoVPN is an Android VPN/proxy client built on the **sing-box** core (libbox). Add a
+SayanVPN is an Android VPN/proxy client built on the **sing-box** core (libbox). Add a
 subscription link, pick a server, tap connect. Kotlin, Jetpack Compose
 (Material 3), coroutines/Flow, Hilt, Room, DataStore, OkHttp.
 
@@ -48,8 +48,8 @@ Anything touching the VPN path is checked on a device, not just in unit tests.
 
 ## Downloading a CI test APK
 
-1. Open [Android CI runs](https://github.com/Peskilo/AutoVPN-Android/actions/workflows/android-ci.yml) and choose the latest successful run on `main`.
-2. In **Artifacts**, download only the archive matching the phone ABI: `autovpn-debug-arm64-v8a` (most modern phones) or `autovpn-debug-armeabi-v7a` (older 32-bit devices). `x86` and `x86_64` are usually for emulators.
+1. Open [Android CI runs](https://github.com/Peskilo/SayanVPN-Android/actions/workflows/android-ci.yml) and choose the latest successful run on `main`.
+2. In **Artifacts**, download only the archive matching the phone ABI: `sayanvpn-debug-arm64-v8a` (most modern phones) or `sayanvpn-debug-armeabi-v7a` (older 32-bit devices). `x86` and `x86_64` are usually for emulators.
 3. Choose the APK matching the device ABI. `arm64-v8a` is typical for modern Android phones; `armeabi-v7a` is for older 32-bit ARM devices; `x86_64` and `x86` are mainly for emulators.
 4. A matching `.sha256` file is included. After extracting, verify it with `sha256sum -c app-arm64-v8a-debug.apk.sha256` (replace the filename for the selected ABI).
 
