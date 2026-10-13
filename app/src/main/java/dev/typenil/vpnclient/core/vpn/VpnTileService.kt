@@ -10,13 +10,18 @@ import android.service.quicksettings.TileService
 import dagger.hilt.android.AndroidEntryPoint
 import dev.typenil.vpnclient.MainActivity
 import dev.typenil.vpnclient.R
+import dev.typenil.vpnclient.data.settings.SettingsRepository
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+/** Tile taps connect only once onboarding is done; null (unknown) and false only open the app. */
+internal fun tileMayConnect(onboardingDone: Boolean?): Boolean = onboardingDone == true
 
 /**
  * Quick Settings tile: tap toggles the tunnel.
@@ -32,6 +37,9 @@ class VpnTileService : TileService() {
 
     @Inject
     lateinit var connectionManager: ConnectionManager
+
+    @Inject
+    lateinit var settings: SettingsRepository
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var listenJob: Job? = null
@@ -63,8 +71,11 @@ class VpnTileService : TileService() {
             is VpnConnectionState.Reconnecting,
             is VpnConnectionState.Stopping,
             -> connectionManager.disconnect()
-            else -> {
-                connectionManager.connect()
+            else -> scope.launch {
+                // Before onboarding is done (or while its state is unknown) the tile
+                // only opens the app: connecting would start the VPN consent flow
+                // ahead of the disclosure.
+                if (tileMayConnect(settings.onboardingDone.first())) connectionManager.connect()
                 openMain()
             }
         }

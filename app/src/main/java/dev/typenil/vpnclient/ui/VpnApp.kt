@@ -37,6 +37,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
+import dev.typenil.vpnclient.ui.onboarding.OnboardingGate
+import dev.typenil.vpnclient.ui.onboarding.OnboardingGateViewModel
+import dev.typenil.vpnclient.ui.onboarding.OnboardingHost
+import dev.typenil.vpnclient.ui.onboarding.OnboardingStep
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -107,6 +112,10 @@ fun VpnApp(
     val themeMode by settings.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.System)
     val dynamicColor by settings.dynamicColor.collectAsStateWithLifecycle(initialValue = false)
     VPNClientTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
+        val gateViewModel: OnboardingGateViewModel = hiltViewModel()
+        val gate by gateViewModel.gate.collectAsStateWithLifecycle()
+        // Lives above the gate switch, so it survives Loading flips, rotation and process death.
+        var onboardingStep by rememberSaveable { mutableStateOf(OnboardingStep.Welcome) }
         val navController = rememberNavController()
         val snackbarHostState = remember { SnackbarHostState() }
         var activeSheet by rememberSaveable { mutableStateOf<String?>(null) }
@@ -114,8 +123,10 @@ fun VpnApp(
         val sheetSaveableState = rememberSaveableStateHolder()
 
         val pendingImport by importUrl.collectAsStateWithLifecycle()
-        LaunchedEffect(pendingImport) {
-            if (pendingImport != null) {
+        // External imports wait for the end of onboarding (the StateFlow keeps
+        // them); the sheet host only exists once the NavHost does.
+        LaunchedEffect(pendingImport, gate) {
+            if (pendingImport != null && gate == OnboardingGate.Done) {
                 // External imports must surface immediately, even when a
                 // full-screen destination is currently covering the sheet host.
                 if (navController.currentDestination?.route !in listOf(Routes.HOME, Routes.SETTINGS)) {
@@ -132,8 +143,9 @@ fun VpnApp(
             ) { result ->
                 connectionManager.onPermissionResult(result.resultCode == Activity.RESULT_OK)
             }
-        LaunchedEffect(prepareIntent) {
-            prepareIntent?.let { vpnConsentLauncher.launch(it) }
+        // No system VPN dialog before onboarding is done: the disclosure comes first.
+        LaunchedEffect(prepareIntent, gate) {
+            if (gate == OnboardingGate.Done) prepareIntent?.let { vpnConsentLauncher.launch(it) }
         }
 
         val currentEntry by navController.currentBackStackEntryAsState()
@@ -181,6 +193,17 @@ fun VpnApp(
                 }
             },
         ) { innerPadding ->
+            // Not a route: no back stack into onboarding once it is finished.
+            if (gate != OnboardingGate.Done) {
+                OnboardingHost(
+                    gate = gate,
+                    step = onboardingStep,
+                    onStepChange = { onboardingStep = it },
+                    onFinish = gateViewModel::finish,
+                    modifier = Modifier.padding(innerPadding),
+                )
+                return@Scaffold
+            }
             Box(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
