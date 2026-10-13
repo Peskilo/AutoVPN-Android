@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import android.graphics.BitmapFactory
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -160,8 +161,14 @@ internal fun AfterglowHomeContent(
     onOpenDetails: () -> Unit,
     onOpenDiagnostics: () -> Unit,
     onOpenRouting: () -> Unit,
-    onOpenServers: () -> Unit = {
-    val colors = AfterglowTheme.colors
+    onOpenServers: () -> Unit = {},
+    onOpenSubscriptions: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onDismissGuard: () -> Unit,
+    errorMessage: String?,
+    onDismissNotice: (() -> Unit)? = null,
+    batteryHint: @Composable () -> Unit = {},
+) {
     val state = ui.connection
     val connected = state is VpnConnectionState.Connected
     val busy = state is VpnConnectionState.Preparing ||
@@ -183,12 +190,10 @@ internal fun AfterglowHomeContent(
                 .widthIn(max = 560.dp)
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
-                .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 10.dp)
-                .padding(bottom = 88.dp),
+                .padding(bottom = 92.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            // Pingwin-style brand header and add-connection menu entry.
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -218,7 +223,6 @@ internal fun AfterglowHomeContent(
                 )
             }
 
-            // Server selector: same white rounded card pattern as Pingwin.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -229,7 +233,7 @@ internal fun AfterglowHomeContent(
                     .padding(horizontal = 18.dp, vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(if (connected) "🌐" else "🌐", fontSize = 28.sp)
+                Text("🌐", fontSize = 28.sp)
                 Spacer(Modifier.width(13.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -253,7 +257,6 @@ internal fun AfterglowHomeContent(
                 Text("⌄", fontSize = 22.sp, color = Color(0xFF455064))
             }
 
-            // The central connection control replaces the previous home hero entirely.
             Column(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -308,30 +311,29 @@ internal fun AfterglowHomeContent(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                if (noServers) {
-                    Box(
-                        Modifier.fillMaxWidth().clip(cardShape).background(Color(0xFF2F6FED))
-                            .clickable { onAddServer() }.padding(horizontal = 18.dp, vertical = 15.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(stringResource(R.string.common_add_server_cta), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                } else {
-                    Box(
-                        Modifier.fillMaxWidth().clip(cardShape).background(Color(0xFF2F6FED))
-                            .clickable(enabled = !busy) { if (connected) onDisconnect() else onConnect() }
-                            .padding(horizontal = 18.dp, vertical = 15.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = if (connected) stringResource(R.string.afterglow_stop)
-                                else if (state is VpnConnectionState.Error) stringResource(R.string.afterglow_retry)
-                                else stringResource(R.string.afterglow_start),
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                Box(
+                    Modifier.fillMaxWidth().clip(cardShape).background(Color(0xFF2F6FED))
+                        .clickable(enabled = noServers || !busy) {
+                            when {
+                                noServers -> onAddServer()
+                                connected -> onDisconnect()
+                                else -> onConnect()
+                            }
+                        }
+                        .padding(horizontal = 18.dp, vertical = 15.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = when {
+                            noServers -> stringResource(R.string.common_add_server_cta)
+                            connected -> stringResource(R.string.action_disconnect)
+                            state is VpnConnectionState.Error -> stringResource(R.string.afterglow_retry)
+                            else -> stringResource(R.string.afterglow_start)
+                        },
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
 
@@ -359,7 +361,6 @@ internal fun AfterglowHomeContent(
             }
             batteryHint()
 
-            // Pingwin-style stacked settings/routing cards, retaining SayanVPN actions.
             Column(
                 Modifier.fillMaxWidth().clip(cardShape).background(Color.White)
                     .border(1.dp, Color(0xFFE9EDF6), cardShape),
@@ -443,107 +444,35 @@ internal fun AfterglowHomeContent(
             }
         }
     }
-},
-    onOpenSubscriptions: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
-    onDismissGuard: () -> Unit,
-    errorMessage: String?,
-    /** Non-null when [errorMessage] is a dismissible pick rejection, not a failure. */
-    onDismissNotice: (() -> Unit)? = null,
-    batteryHint: @Composable () -> Unit = {},
+}
+
+@Composable
+private fun PingwinStyleRow(
+    symbol: String,
+    symbolColor: Color,
+    symbolBackground: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
 ) {
-    val colors = AfterglowTheme.colors
-    val state = ui.connection
-    val noServers = ui.serverOptions.isEmpty() && (state is VpnConnectionState.Idle || state is VpnConnectionState.Error)
-    // Measured, not fixed: the scroll reserve tracks the real action height
-    // (+ modest gap) so large fonts can't bury the tail of the content.
-    var actionHeightPx by remember { mutableIntStateOf(0) }
-    val actionReserve = with(LocalDensity.current) { actionHeightPx.toDp() } + 12.dp
-    // Fonts wide enough to crowd two columns get one stacked layout instead.
-    val compact = LocalDensity.current.fontScale > 1.3f ||
-        LocalConfiguration.current.screenWidthDp < 340
-    // View-only: collapsed by default, survives rotation, never written to settings.
-    var statsExpanded by rememberSaveable { mutableStateOf(false) }
-    Box(modifier.fillMaxSize().background(colors.paper)) {
-        Column(Modifier.align(Alignment.TopCenter).fillMaxHeight()
-            .widthIn(max = HomeContentMaxWidth).fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            // The transparent action overlay includes the bottom bar inset;
-            // its entire measured height is reserved below the scroll content.
-            .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
-            .padding(bottom = actionReserve)) {
-            Row(Modifier.fillMaxWidth().heightIn(min = if (isShortWindow(LocalConfiguration.current.screenHeightDp)) 48.dp else 58.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.ic_sayan_mark), contentDescription = null, modifier = Modifier.size(38.dp).padding(end = 6.dp))
-                Text(stringResource(R.string.brand_wordmark), fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp, color = colors.ink)
-                Text(".", fontSize = 31.sp, fontWeight = FontWeight.Black, color = colors.coral)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.nav_settings),
-                        tint = colors.ink)
-                }
-            }
-            ConnectionHero(state.visual(), noServers, ui.selectedDelayMs, ui.healthHint, ui.selectedDelayStaleMinutes)
-            if (errorMessage != null) {
-                if (onDismissNotice != null) {
-                    StatusNotice(errorMessage, onDismissNotice, false, null, stringResource(R.string.common_dismiss))
-                } else {
-                    StatusNotice(errorMessage, onOpenDiagnostics, true, null, stringResource(R.string.afterglow_open_diagnostics))
-                }
-            }
-            if (state == VpnConnectionState.PermissionRequired) {
-                Text(stringResource(R.string.afterglow_permission_explanation), color = colors.muted,
-                    modifier = Modifier.padding(top = 12.dp), fontSize = 14.sp)
-            }
-            if (ui.restartGuardTripped) {
-                StatusNotice(
-                    stringResource(R.string.home_restart_guard_text), onDismissGuard, false,
-                    stringResource(R.string.afterglow_restart_guard_title), stringResource(R.string.common_dismiss),
-                )
-            }
-            batteryHint()
-            Spacer(Modifier.height(18.dp))
-            // Selected server + routing and live stats carry the session —
-            // shortcuts trail them instead of pushing them below the fold.
-            ServerAndRouting(ui.withAppliedServerOnRejection(), onPick, if (ui.noNodesAtAll) onAddServer else onOpenServers, onOpenRouting)
-            if (state is VpnConnectionState.Connected) {
-                SessionStats(state, onOpenConnections, onOpenDetails, statsExpanded) { statsExpanded = !statsExpanded }
-            }
-            Spacer(Modifier.height(18.dp))
-            SectionHeader(stringResource(R.string.afterglow_quick_access),
-                Modifier.padding(start = 2.dp, bottom = 8.dp))
-            if (compact) {
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ShortcutCard(R.string.nav_servers,
-                        stringResource(R.string.afterglow_servers_available,
-                            (ui.serverOptions.size - 1).coerceAtLeast(0)), true, onOpenServers, Modifier.fillMaxWidth())
-                    ShortcutCard(R.string.nav_subscriptions,
-                        stringResource(R.string.afterglow_subscriptions_enabled, ui.enabledSubscriptionCount),
-                        false, onOpenSubscriptions, Modifier.fillMaxWidth())
-                }
-            } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ShortcutCard(R.string.nav_servers,
-                        stringResource(R.string.afterglow_servers_available,
-                            (ui.serverOptions.size - 1).coerceAtLeast(0)), true, onOpenServers, Modifier.weight(1f))
-                    ShortcutCard(R.string.nav_subscriptions,
-                        stringResource(R.string.afterglow_subscriptions_enabled, ui.enabledSubscriptionCount),
-                        false, onOpenSubscriptions, Modifier.weight(1f))
-                }
-            }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(symbolBackground),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(symbol, color = symbolColor, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         }
-        // Transparent, non-interactive decoration: only the action row handles
-        // input. Measure the mascot space and nav inset too for the scroll tail.
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            .onSizeChanged { actionHeightPx = it.height }
-            .navigationBarsPadding()) {
-            ConnectionAction(state.visual(), noServers, if (noServers) {
-                if (ui.noNodesAtAll) onAddServer else onOpenServers
-            } else onConnect, onDisconnect,
-                Modifier.align(Alignment.TopCenter).widthIn(max = HomeContentMaxWidth)
-                    .fillMaxWidth().padding(horizontal = 16.dp),
-                hasNodes = !ui.noNodesAtAll)
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color(0xFF17191F), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, color = Color(0xFF697184), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(10.dp))
+        Text("›", color = Color(0xFF455064), fontSize = 26.sp)
     }
 }
 
@@ -1169,36 +1098,5 @@ private fun StatusNotice(message: String, onClick: () -> Unit, error: Boolean, t
         Text(message, color = colors.ink, fontSize = 14.sp, modifier = Modifier.padding(top = if (title == null) 0.dp else 4.dp))
         Text(actionLabel,
             color = colors.coral, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-    }
-}
-
-
-@Composable
-private fun PingwinStyleRow(
-    symbol: String,
-    symbolColor: Color,
-    symbolBackground: Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(40.dp).clip(CircleShape).background(symbolBackground),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(symbol, color = symbolColor, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.width(13.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color(0xFF17191F), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(2.dp))
-            Text(subtitle, color = Color(0xFF697184), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Spacer(Modifier.width(10.dp))
-        Text("›", color = Color(0xFF455064), fontSize = 26.sp)
     }
 }
