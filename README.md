@@ -46,6 +46,15 @@ Verified on a physical phone (Android 16) and an emulator; the build and
 JVM unit tests (parsers, classifier, redaction, state machine) run in CI.
 Anything touching the VPN path is checked on a device, not just in unit tests.
 
+## Downloading a CI test APK
+
+1. Open [Android CI runs](https://github.com/Peskilo/AutoVPN-Android/actions/workflows/android-ci.yml) and choose the latest successful run on `main`.
+2. In **Artifacts**, download `app-debug` and extract the ZIP.
+3. Choose the APK matching the device ABI. `arm64-v8a` is typical for modern Android phones; `armeabi-v7a` is for older 32-bit ARM devices; `x86_64` and `x86` are mainly for emulators.
+4. Check the APK against the matching entry in `SHA256SUMS.txt` before installing.
+
+These are debug-signed test builds, not an official release. Only install them if you trust the source. Do not ignore an antivirus warning or disable protection to install an APK; stop and review the specific detection first.
+
 ## Architecture
 
 `ConnectionManager` owns the connection state machine and is the only thing the
