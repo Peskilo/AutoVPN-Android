@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -43,12 +44,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.URL
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -108,52 +109,56 @@ private fun VpnConnectionState.visual() = when (this) {
     is VpnConnectionState.Error -> VisualState.Error
 }
 
-private val GOKU_BASE_URLS = listOf(
-    "https://static.wikia.nocookie.net/character-stats-and-profiles/images/3/38/GokuBaseBoZ.webp/revision/latest?cb=20240722022954",
-    "https://i.pinimg.com/736x/59/67/90/596790fb52e5717dae42c6ad891c9655.jpg",
-    "https://i.pinimg.com/736x/ea/98/2a/ea982a234be505557326fe4704b8d8f5.jpg",
-    "https://i.pinimg.com/736x/22/59/0f/22590fc64a23d3f85d9583d3dc0c85c5.jpg",
-)
-private val GOKU_SSJ_URLS = listOf(
-    "https://i.pinimg.com/736x/22/59/0f/22590fc64a23d3f85d9583d3dc0c85c5.jpg",
-    "https://i.pinimg.com/736x/ea/98/2a/ea982a234be505557326fe4704b8d8f5.jpg",
-    "https://i.pinimg.com/736x/59/67/90/596790fb52e5717dae42c6ad891c9655.jpg",
-    "https://static.wikia.nocookie.net/character-stats-and-profiles/images/3/38/GokuBaseBoZ.webp/revision/latest?cb=20240722022954",
-)
+/**
+ * The base-form source uses a flat green matte. Remove that matte from the
+ * local bitmap so the hero remains clean over the app's light background.
+ */
+private fun removeGreenMatte(source: Bitmap): Bitmap {
+    val bitmap = source.copy(Bitmap.Config.ARGB_8888, true)
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    for (i in pixels.indices) {
+        val pixel = pixels[i]
+        val red = android.graphics.Color.red(pixel)
+        val green = android.graphics.Color.green(pixel)
+        val blue = android.graphics.Color.blue(pixel)
+        if (green > 40 && green > red * 1.13 && green > blue * 1.06 && green - red > 10) {
+            pixels[i] = android.graphics.Color.TRANSPARENT
+        }
+    }
+    bitmap.setPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    return bitmap
+}
 
 /**
- * Tries the user-provided Goku art links in order. Image loading is asynchronous;
- * the local Sayan/Goku vector remains visible if a host is unavailable.
+ * Uses bundled art only: no remote image requests and no chance for one form
+ * to accidentally fall back to the other form.
  */
 @Composable
 private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
-    val imageUrls = if (isSuperSaiyan) GOKU_SSJ_URLS else GOKU_BASE_URLS
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = imageUrls) {
+    val context = LocalContext.current
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = isSuperSaiyan) {
         value = withContext(Dispatchers.IO) {
-            imageUrls.firstNotNullOfOrNull { imageUrl ->
-                runCatching {
-                    val connection = URL(imageUrl).openConnection().apply {
-                        connectTimeout = 5000
-                        readTimeout = 8000
-                        setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) SayanVPN/1.0")
-                    }
-                    connection.getInputStream().use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
-                }.getOrNull()
-            }
+            runCatching {
+                val resourceId = if (isSuperSaiyan) R.drawable.goku_ssj else R.drawable.goku_base
+                val decoded = BitmapFactory.decodeResource(context.resources, resourceId)
+                    ?: return@runCatching null
+                (if (isSuperSaiyan) decoded else removeGreenMatte(decoded)).asImageBitmap()
+            }.getOrNull()
         }
     }
     Box(modifier, contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap!!,
-                contentDescription = "Goku",
+                contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
             Image(
                 painter = painterResource(R.drawable.ic_sayan_mark),
-                contentDescription = "Goku",
+                contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(0.62f),
             )
