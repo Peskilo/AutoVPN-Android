@@ -93,6 +93,7 @@
     <string name="nav_servers">Servers</string>
     <string name="nav_subscriptions">Subscriptions</string>
     <string name="nav_settings">Settings</string>
+    <string name="nav_home">Home</string>
 
     <!-- Common -->
     <string name="common_cancel">Cancel</string>
