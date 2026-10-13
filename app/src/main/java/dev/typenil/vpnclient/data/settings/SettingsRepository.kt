@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -68,6 +69,9 @@ class SettingsRepository
             /** Opt-in: pause the core in Doze (drops open TCP connections). */
             val DOZE_POWER_SAVE = booleanPreferencesKey("doze_power_save")
             val BATTERY_HINT_DISMISSED = booleanPreferencesKey("battery_hint_dismissed")
+
+            /** First-run screens completed (or grandfathered on update). */
+            val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
 
             /** Crash-loop guard: start of the current counting window (epoch ms). */
             val VPN_RESTART_WINDOW_START = longPreferencesKey("vpn_restart_window_start")
@@ -319,6 +323,19 @@ class SettingsRepository
             context.settingsStore.edit { persistBatteryHintDismissal(it) }
         }
 
+        /** Read errors remain unknown (null): the gate must not flash onboarding on I/O failure. */
+        val onboardingDone: Flow<Boolean?> =
+            context.settingsStore.data.map<Preferences, Boolean?> { onboardingDoneOf(it) }
+                .catch { if (it is IOException) emit(null) else throw it }
+
+        suspend fun markOnboardingDone() {
+            context.settingsStore.edit { persistOnboardingDone(it) }
+        }
+
+        /** One-shot read for the grandfather decision; [subscriptionCount] comes from Room. */
+        suspend fun installEvidence(subscriptionCount: Int): InstallEvidence =
+            installEvidenceOf(context.settingsStore.data.first(), subscriptionCount)
+
         /**
          * Crash-loop guard for automatic (sticky-restart / boot) tunnel starts.
          * A native crash kills the process before any catch block runs, so the
@@ -477,6 +494,21 @@ class SettingsRepository
             internal fun persistBatteryHintDismissal(prefs: MutablePreferences) {
                 prefs[Keys.BATTERY_HINT_DISMISSED] = true
             }
+
+            /** Absent = not done: only `true` is ever written. */
+            internal fun onboardingDoneOf(prefs: Preferences): Boolean = prefs[Keys.ONBOARDING_DONE] ?: false
+
+            internal fun persistOnboardingDone(prefs: MutablePreferences) {
+                prefs[Keys.ONBOARDING_DONE] = true
+            }
+
+            /** Presence of traces only — raw `hwid_allowed` (not the migrated consent), never values. */
+            internal fun installEvidenceOf(prefs: Preferences, subscriptionCount: Int) = InstallEvidence(
+                subscriptionCount = subscriptionCount,
+                hwidDecided = prefs[Keys.HWID_ALLOWED] != null,
+                nodeSelected = prefs[Keys.SELECTED_NODE_ID] != null,
+                vpnDesired = prefs[Keys.DESIRED_VPN_RUNNING] == true,
+            )
 
             private val HEX32 = Regex("[0-9a-fA-F]{32}")
 
