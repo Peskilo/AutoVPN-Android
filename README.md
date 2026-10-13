@@ -3,8 +3,8 @@
 **English** · [Русский](README.ru.md)
 
 > **🚧 Under development.** The app works, but it is not finished or released.
-> The design is not final and the interface, features and screenshots below
-> may change at any time. Expect rough edges. Not on Google Play yet.
+> The design is not final and the interface and features may change at any time.
+> Expect rough edges. Not on Google Play yet.
 
 AutoVPN is an Android VPN/proxy client built on the **sing-box** core (libbox). Add a
 subscription link, pick a server, tap connect. Kotlin, Jetpack Compose
