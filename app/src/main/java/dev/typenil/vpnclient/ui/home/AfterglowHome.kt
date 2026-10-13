@@ -184,7 +184,8 @@ internal fun AfterglowHomeContent(
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .padding(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             // Pingwin-style brand header and add-connection menu entry.
@@ -206,9 +207,6 @@ internal fun AfterglowHomeContent(
                     letterSpacing = (-0.7).sp,
                 )
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.nav_settings), tint = Color(0xFF17325F))
-                }
                 Text(
                     text = "+",
                     color = Color(0xFF17325F),
@@ -413,6 +411,36 @@ internal fun AfterglowHomeContent(
                 }
             }
             Spacer(Modifier.height(12.dp))
+        }
+        Row(
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .fillMaxWidth().widthIn(max = 560.dp)
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .navigationBarsPadding()
+                .clip(RoundedCornerShape(26.dp))
+                .background(Color.White)
+                .border(1.dp, Color(0xFFE9EDF6), RoundedCornerShape(26.dp))
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFFE9EEFF)).padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("⌂", fontSize = 22.sp, color = Color(0xFF2450C8))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.nav_home), color = Color(0xFF2450C8), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Row(
+                Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                    .clickable { onOpenSettings() }.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null, tint = Color(0xFF555B67))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.nav_settings), color = Color(0xFF555B67), fontSize = 15.sp)
+            }
         }
     }
 },
