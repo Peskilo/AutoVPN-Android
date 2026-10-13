@@ -1,6 +1,7 @@
 package dev.typenil.vpnclient.ui.onboarding
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -172,7 +173,7 @@ internal fun OnboardingHost(
     // Snapshot once: Allow flips the live permission, which must not drop the step mid-flow.
     val granted = rememberSaveable {
         sdk >= OnboardingSteps.NOTIFICATIONS_MIN_SDK &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, NOTIFICATIONS_PERMISSION) == PackageManager.PERMISSION_GRANTED
     }
     val advance = { advanceFrom(step, sdk, granted, onStepChange, onFinish) }
     // Any result, including a refusal or a permanent denial, moves on: no retry loop.
@@ -183,7 +184,7 @@ internal fun OnboardingHost(
     OnboardingScreen(
         step = step,
         onContinue = {
-            if (step == OnboardingStep.Notifications) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else advance()
+            if (step == OnboardingStep.Notifications) permission.launch(NOTIFICATIONS_PERMISSION) else advance()
         },
         onBack = previous?.let { { onStepChange(it) } },
         modifier = modifier,
@@ -191,3 +192,7 @@ internal fun OnboardingHost(
         notificationsGranted = granted,
     )
 }
+
+// Guarded by the SDK check: only read when sdk >= NOTIFICATIONS_MIN_SDK.
+@SuppressLint("InlinedApi")
+private const val NOTIFICATIONS_PERMISSION = Manifest.permission.POST_NOTIFICATIONS
