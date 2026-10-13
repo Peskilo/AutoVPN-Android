@@ -277,7 +277,7 @@
         <item quantity="one">Exclude %1$d app</item>
         <item quantity="other">Exclude %1$d apps</item>
     </plurals>
-    <string name="home_auto_subtitle">Fastest available server</string>
+    <string name="home_auto_subtitle">Automatically picks a reachable server with low latency</string>
 
     <!-- Servers -->
     <string name="servers_search_hint">Search name or server</string>
