@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/** Pingwin-inspired blue/green palette shared by every SayanVPN screen. */
+/** Brand surfaces remain stable even when Material dynamic color is enabled. */
 @Immutable
 data class AfterglowPalette(
     val paper: Color,
@@ -13,6 +13,7 @@ data class AfterglowPalette(
     val ink: Color,
     val muted: Color,
     val border: Color,
+    /** Boundaries of controls (fields, switches, chips): WCAG non-text 3:1. [border] stays decorative. */
     val borderStrong: Color,
     val coral: Color,
     val coralLight: Color,
@@ -24,6 +25,7 @@ data class AfterglowPalette(
     val actionSurface: Color,
     val onActionSurface: Color,
     val errorAccent: Color,
+    /** State surfaces, see [stateColors]; the status text always names the state too. */
     val heroNeutral: Color,
     val heroProgress: Color,
     val heroPositive: Color,
@@ -34,65 +36,68 @@ data class AfterglowPalette(
 
 val LightAfterglow =
     AfterglowPalette(
-        paper = Color(0xFFFAFBFD),
-        paperSecondary = Color(0xFFF3F5F9),
+        paper = Color(0xFFF2F6FC),
+        paperSecondary = Color(0xFFE4EDF8),
         surfaceElevated = Color(0xFFFFFFFF),
-        ink = Color(0xFF17191F),
-        muted = Color(0xFF455064),
-        border = Color(0xFFE9ECF1),
-        borderStrong = Color(0xFF657084),
-        coral = Color(0xFF2B62D6),
-        coralLight = Color(0xFF2B62D6),
-        jade = Color(0xFF187A3C),
-        amber = Color(0xFF89600B),
+        ink = Color(0xFF0B1930),
+        muted = Color(0xFF52647D),
+        border = Color(0xFFC7D5E6),
+        borderStrong = Color(0xFF627995),
+        coral = Color(0xFF8A6200),
+        coralLight = Color(0xFFFFD447),
+        jade = Color(0xFF32C5D8),
+        amber = Color(0xFFFFC247),
         error = Color(0xFFB4233B),
         errorSurface = Color(0xFFFFE4E7),
         onInk = Color(0xFFFFFFFF),
-        actionSurface = Color(0xFF050608),
-        onActionSurface = Color(0xFFFFFFFF),
-        errorAccent = Color(0xFFB4233B),
-        heroNeutral = Color(0xFF10285A),
+        actionSurface = Color(0xFF0B1930),
+        onActionSurface = Color(0xFFF1F6FF),
+        errorAccent = Color(0xFFFF657A),
+        heroNeutral = Color(0xFF17345A),
         heroProgress = Color(0xFF73510B),
-        heroPositive = Color(0xFF0B4B2D),
-        heroError = Color(0xFF7F1D2D),
+        heroPositive = Color(0xFF0B4655),
+        heroError = Color(0xFF9E2638),
         onHero = Color(0xFFFFFFFF),
-        onHeroMuted = Color(0xFFE9EDF6),
+        onHeroMuted = Color(0xFFD7E8FA),
     )
 
 val DarkAfterglow =
     AfterglowPalette(
-        paper = Color(0xFF0B1020),
-        paperSecondary = Color(0xFF111827),
-        surfaceElevated = Color(0xFF172238),
-        ink = Color(0xFFF4F6FA),
-        muted = Color(0xFFB4C0D2),
-        border = Color(0xFF34425A),
-        borderStrong = Color(0xFF7C8CA5),
-        coral = Color(0xFF8AB0FF),
-        coralLight = Color(0xFF8AB0FF),
-        jade = Color(0xFF66D995),
-        amber = Color(0xFFFFD47A),
-        error = Color(0xFFFF9AA8),
-        errorSurface = Color(0xFF421D29),
-        onInk = Color(0xFF0B1020),
-        actionSurface = Color(0xFF1E3355),
-        onActionSurface = Color(0xFFFFFFFF),
-        errorAccent = Color(0xFFFF9AA8),
-        heroNeutral = Color(0xFF10285A),
-        heroProgress = Color(0xFF5A4210),
-        heroPositive = Color(0xFF0B3C2C),
-        heroError = Color(0xFF5B1F2D),
-        onHero = Color(0xFFFFFFFF),
-        onHeroMuted = Color(0xFFE9EDF6),
+        paper = Color(0xFF07101F),
+        paperSecondary = Color(0xFF111E31),
+        surfaceElevated = Color(0xFF182943),
+        ink = Color(0xFFF1F6FF),
+        muted = Color(0xFFB4C4D9),
+        border = Color(0xFF30435C),
+        borderStrong = Color(0xFF7C91AE),
+        coral = Color(0xFFFFD447),
+        coralLight = Color(0xFFFFD447),
+        jade = Color(0xFF5DC9A7),
+        amber = Color(0xFFF4C27B),
+        error = Color(0xFFFF9CAB),
+        errorSurface = Color(0xFF3B1D2B),
+        onInk = Color(0xFF07101F),
+        actionSurface = Color(0xFF182943),
+        onActionSurface = Color(0xFFFFFAF6),
+        errorAccent = Color(0xFFFF9CAB),
+        heroNeutral = Color(0xFF102846),
+        heroProgress = Color(0xFF60460E),
+        heroPositive = Color(0xFF0A3441),
+        heroError = Color(0xFF661C30),
+        onHero = Color(0xFFFFFAF6),
+        onHeroMuted = Color(0xFFE6DAD3),
     )
 
 val LocalAfterglowPalette = compositionLocalOf { LightAfterglow }
 
+/** Semantic meaning of a connection state; red is reserved for [Error]. */
 enum class StateTone { Neutral, Progress, Positive, Error }
 
+/** Colors of the hero and the action bar for one [StateTone]. */
 @Immutable
 data class StateColors(val hero: Color, val onHero: Color, val onHeroMuted: Color, val accent: Color, val line: Color)
 
+/** Pure tone -> tokens mapping; screens never pick state colors themselves. */
 fun AfterglowPalette.stateColors(tone: StateTone): StateColors =
     when (tone) {
         StateTone.Neutral -> StateColors(heroNeutral, onHero, onHeroMuted, coralLight, coralLight)
