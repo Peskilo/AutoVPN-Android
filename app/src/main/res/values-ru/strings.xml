@@ -542,5 +542,7 @@
     <string name="onboarding_vpn_privacy">Приложение не собирает и не продаёт ваш трафик. Собственных серверов и аналитики у него нет.</string>
     <string name="onboarding_vpn_checks">Для проверки соединения приложение обращается к api.ipify.org — стороннему сервису, который видит IP-адрес вашего сервера, — и отправляет DNS-запрос для example.com.</string>
     <string name="onboarding_notifications_title">Уведомления</string>
-    <string name="onboarding_notifications_body">Пока VPN включён, приложение показывает уведомление о состоянии. Разрешить уведомления можно позже в настройках; VPN работает и без них.</string>
+    <string name="onboarding_notifications_body">Пока VPN включён, приложение показывает уведомление о состоянии. Разрешение необязательно и его можно изменить позже в настройках; VPN работает и без уведомлений.</string>
+    <string name="onboarding_notifications_allow">Разрешить</string>
+    <string name="onboarding_notifications_not_now">Не сейчас</string>
 </resources>

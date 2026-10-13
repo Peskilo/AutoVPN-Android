@@ -533,5 +533,7 @@
     <string name="onboarding_vpn_privacy">The app does not collect or sell your traffic. It has no servers or analytics of its own.</string>
     <string name="onboarding_vpn_checks">To check the connection, the app contacts api.ipify.org, a third-party service that sees the IP address of your server, and sends a DNS request for example.com.</string>
     <string name="onboarding_notifications_title">Notifications</string>
-    <string name="onboarding_notifications_body">While the VPN is on, the app shows a status notification. You can allow notifications later in Settings; the VPN works without them.</string>
+    <string name="onboarding_notifications_body">While the VPN is on, the app shows a status notification. Allowing them is optional and can be changed later in Settings; the VPN works without them.</string>
+    <string name="onboarding_notifications_allow">Allow</string>
+    <string name="onboarding_notifications_not_now">Not now</string>
 </resources>

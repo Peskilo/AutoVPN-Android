@@ -42,7 +42,8 @@ private val ContentMaxWidth = 560.dp
 
 /**
  * One first-run step. Stateless: the host owns [step], persists it and decides
- * what Continue / Back do. This screen never asks Android for a permission —
+ * what Continue / Back do. This screen never asks Android for a permission
+ * itself — on the notifications step the host's [onContinue] (Allow) does, and
  * the VPN dialog stays behind the connection state machine.
  *
  * Continue is pinned under a scrolling body so it never covers text, at any
@@ -54,7 +55,9 @@ fun OnboardingScreen(
     onContinue: () -> Unit,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onNotNow: () -> Unit = {},
     sdk: Int = Build.VERSION.SDK_INT,
+    notificationsGranted: Boolean = false,
     privacyPolicyUrl: String = AboutUrls.PRIVACY_POLICY.trim(),
 ) {
     val colors = AfterglowTheme.colors
@@ -62,8 +65,8 @@ fun OnboardingScreen(
     LaunchedEffect(step) { scroll.scrollTo(0) }
     val stepState = stringResource(
         R.string.onboarding_step_state,
-        OnboardingSteps.position(step, sdk),
-        OnboardingSteps.count(sdk),
+        OnboardingSteps.position(step, sdk, notificationsGranted),
+        OnboardingSteps.count(sdk, notificationsGranted),
     )
     val brand = stringResource(R.string.app_name)
 
@@ -110,10 +113,16 @@ fun OnboardingScreen(
             Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            val asking = step == OnboardingStep.Notifications
             AfterglowButton(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.onboarding_continue))
+                Text(stringResource(if (asking) R.string.onboarding_notifications_allow else R.string.onboarding_continue))
             }
-            if (onBack != null) {
+            if (asking) {
+                // System Back still goes to the previous step; two text buttons would crowd the pinned footer.
+                TextButton(onClick = onNotNow, Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.onboarding_notifications_not_now), color = colors.muted)
+                }
+            } else if (onBack != null) {
                 TextButton(onClick = onBack, Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.common_back), color = colors.muted)
                 }

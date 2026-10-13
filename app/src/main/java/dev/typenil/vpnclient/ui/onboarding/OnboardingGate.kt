@@ -1,12 +1,19 @@
 package dev.typenil.vpnclient.ui.onboarding
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -104,13 +111,26 @@ internal fun OnboardingHost(
         return
     }
     val sdk = Build.VERSION.SDK_INT
-    val previous = OnboardingSteps.previous(step, sdk)
+    val context = LocalContext.current
+    // Snapshot once: Allow flips the live permission, which must not drop the step mid-flow.
+    val granted = rememberSaveable {
+        sdk >= OnboardingSteps.NOTIFICATIONS_MIN_SDK &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+    val advance = { advanceFrom(step, sdk, granted, onStepChange, onFinish) }
+    // Any result, including a refusal or a permanent denial, moves on: no retry loop.
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { advance() }
+    val previous = OnboardingSteps.previous(step, sdk, granted)
     // Step 1: no handler, so system Back leaves the app.
     BackHandler(enabled = previous != null) { previous?.let(onStepChange) }
     OnboardingScreen(
         step = step,
-        onContinue = { OnboardingSteps.next(step, sdk)?.let(onStepChange) ?: onFinish() },
+        onContinue = {
+            if (step == OnboardingStep.Notifications) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else advance()
+        },
         onBack = previous?.let { { onStepChange(it) } },
         modifier = modifier,
+        onNotNow = advance,
+        notificationsGranted = granted,
     )
 }
