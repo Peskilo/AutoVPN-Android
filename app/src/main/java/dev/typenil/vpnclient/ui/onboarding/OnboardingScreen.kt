@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -81,7 +83,11 @@ fun OnboardingScreen(
                 style = MaterialTheme.typography.labelLarge,
             )
             if (step == OnboardingStep.Welcome) {
-                Image(painterResource(R.drawable.afterglow_mascot), contentDescription = null, Modifier.size(96.dp))
+                Image(
+                    painterResource(R.drawable.afterglow_mascot),
+                    contentDescription = null,
+                    Modifier.size(96.dp).clip(CircleShape),
+                )
             }
             Text(
                 stepTitle(step, brand),
