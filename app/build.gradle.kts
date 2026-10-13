@@ -10,6 +10,7 @@ plugins {
 }
 
 val vpnCoreVersion = libs.versions.vpnCore.get()
+val requestedAbi = providers.gradleProperty("autovpnAbi").orNull
 
 android {
     namespace = "dev.typenil.vpnclient"
@@ -29,6 +30,14 @@ android {
         // test APK — VpnTestRunner instantiates VpnTestApp instead of the
         // production VpnClientApp so @TestInstallIn fakes can plug in.
         testInstrumentationRunner = "dev.typenil.vpnclient.VpnTestRunner"
+        if (requestedAbi != null) {
+            require(requestedAbi in setOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")) {
+                "Unsupported AutoVPN ABI: $requestedAbi"
+            }
+            ndk {
+                abiFilters += requestedAbi
+            }
+        }
     }
 
     buildTypes {
@@ -42,16 +51,8 @@ android {
             )
         }
     }
-    // libbox ships large native binaries for each ABI. Separate APKs keep
-    // a phone download from carrying desktop/emulator libraries it cannot use.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
-            isUniversalApk = false
-        }
-    }
+    // CI can build one device-specific APK at a time with -PautovpnAbi=...
+    // This avoids accidentally shipping all four large native libbox binaries.
     bundle {
         language {
             enableSplit = false
