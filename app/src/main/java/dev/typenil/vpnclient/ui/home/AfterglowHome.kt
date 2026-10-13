@@ -282,10 +282,10 @@ internal fun AfterglowHomeContent(
                 Text(
                     text = when {
                         connected -> stringResource(R.string.afterglow_online)
-                        state is VpnConnectionState.Error -> stringResource(R.string.afterglow_retry)
+                        state is VpnConnectionState.Error -> stringResource(R.string.afterglow_offline)
                         busy -> stringResource(R.string.afterglow_status_reconnecting)
-                        noServers -> stringResource(R.string.common_add_server_cta)
-                        else -> stringResource(R.string.afterglow_start)
+                        noServers -> stringResource(R.string.afterglow_no_servers_headline)
+                        else -> stringResource(R.string.afterglow_offline)
                     },
                     color = Color(0xFF15171C),
                     fontSize = 18.sp,
