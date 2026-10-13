@@ -25,9 +25,9 @@ Hysteria2, TUIC).
   <img src="docs/screenshots/home-dark.png" width="240" alt="Dark theme">
 </p>
 
-Screenshots are from a physical phone with real subscriptions and show the
-current, non-final design. Provider messages in the Subscriptions screen are
-shown as the providers sent them.
+Screenshots are taken on an Android emulator with a local demo subscription and
+synthetic data (made-up servers and usage) and show the current, non-final
+design.
 
 ## What it does
 
