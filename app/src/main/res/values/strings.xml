@@ -524,7 +524,7 @@
     <string name="onboarding_step_state">Step %1$d of %2$d</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_welcome_title">Welcome to %1$s</string>
-    <string name="onboarding_welcome_body">%1$s connects to servers you add yourself and sends the traffic of the apps you route through the VPN (all apps by default) through them. The app has no servers of its own and no analytics.</string>
+    <string name="onboarding_welcome_body">%1$s connects to servers you add yourself and sends the traffic of the apps you route through the VPN (all apps by default) through them. The app has no servers or analytics of its own.</string>
     <string name="onboarding_subscription_title">Your subscription</string>
     <string name="onboarding_subscription_body">Add a subscription link or a QR code from your provider. Links are stored only on this device. To fetch a subscription, the app sends the link to your provider\'s server, so the provider sees the request and your IP address.</string>
     <string name="onboarding_subscription_hwid">If you allow it, the app also sends the provider a random installation ID (HWID) with your device model and OS version. Nothing is sent until you choose; you will be asked when you add your first subscription.</string>
