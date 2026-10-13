@@ -49,7 +49,7 @@ Anything touching the VPN path is checked on a device, not just in unit tests.
 ## Downloading a CI test APK
 
 1. Open [Android CI runs](https://github.com/Peskilo/AutoVPN-Android/actions/workflows/android-ci.yml) and choose the latest successful run on `main`.
-2. In **Artifacts**, download `app-debug` and extract the ZIP.
+2. In **Artifacts**, download only the archive matching the phone ABI: `autovpn-debug-arm64-v8a` (most modern phones) or `autovpn-debug-armeabi-v7a` (older 32-bit devices). `x86` and `x86_64` are usually for emulators.
 3. Choose the APK matching the device ABI. `arm64-v8a` is typical for modern Android phones; `armeabi-v7a` is for older 32-bit ARM devices; `x86_64` and `x86` are mainly for emulators.
 4. Check the APK against the matching entry in `SHA256SUMS.txt` before installing.
 
