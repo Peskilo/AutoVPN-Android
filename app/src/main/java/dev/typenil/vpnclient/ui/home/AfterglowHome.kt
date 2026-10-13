@@ -193,7 +193,8 @@ internal fun AfterglowHomeContent(
             .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
             .padding(bottom = actionReserve)) {
             Row(Modifier.fillMaxWidth().heightIn(min = if (isShortWindow(LocalConfiguration.current.screenHeightDp)) 48.dp else 58.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.brand_wordmark), fontSize = 31.sp, fontWeight = FontWeight.Black, letterSpacing = (-2).sp, color = colors.ink)
+                Image(painterResource(R.drawable.ic_sayan_mark), contentDescription = null, modifier = Modifier.size(38.dp).padding(end = 6.dp))
+                Text(stringResource(R.string.brand_wordmark), fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp, color = colors.ink)
                 Text(".", fontSize = 31.sp, fontWeight = FontWeight.Black, color = colors.coral)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onOpenSettings) {
