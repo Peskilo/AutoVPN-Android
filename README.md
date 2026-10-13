@@ -1,15 +1,66 @@
-# VPNClient
+# Yuyake — Android VPN client
 
-Android VPN/proxy client built on **sing-box** (libbox). Material 3 + Compose,
-Kotlin, coroutines/Flow, Hilt, Room, DataStore.
+An Android VPN/proxy client built on the **sing-box** core (libbox). Add a
+subscription link, pick a server, tap connect. Kotlin, Jetpack Compose
+(Material 3), coroutines/Flow, Hilt, Room, DataStore, OkHttp.
 
-Targets the Remnawave subscription ecosystem plus generic share-link
-subscriptions (VLESS/VMess/Trojan/Shadowsocks/Hysteria2/TUIC).
+It works with [Remnawave](https://docs.rw/) panels and with generic
+subscriptions made of share links (VLESS, VMess, Trojan, Shadowsocks,
+Hysteria2, TUIC).
+
+<p>
+  <img src="docs/screenshots/home-connected.png" width="240" alt="Connected, live traffic">
+  <img src="docs/screenshots/servers.png" width="240" alt="Servers with latency">
+  <img src="docs/screenshots/routing.png" width="240" alt="Routing settings">
+</p>
+<p>
+  <img src="docs/screenshots/home-idle.png" width="240" alt="Home, disconnected">
+  <img src="docs/screenshots/subscriptions.png" width="240" alt="Subscriptions">
+  <img src="docs/screenshots/home-dark.png" width="240" alt="Dark theme">
+</p>
+
+Screenshots are from a physical phone with real subscriptions (provider
+messages in the Subscriptions screen are shown as the providers sent them).
+
+## What it does
+
+- **Subscriptions:** import by URL, share link or QR code; periodic
+  auto-refresh using the provider's interval; usage, expiry and support links
+  from the provider are shown. Imported data is treated as untrusted (size
+  limits, typed parse errors), and a failed refresh never overwrites a working
+  subscription.
+- **Servers:** search, filter, favourites, latency test, "Auto" mode.
+- **Routing:** proxy everything, bypass Russian sites, or proxy only blocked
+  sites; per-app VPN; LAN bypass; DNS mode and upstream; custom rules.
+- **Connection:** live speed graph, traffic totals, connection counts, health
+  checks (IP check and DNS probe), reconnect on network change, restore after
+  reboot, Quick Settings tile, Always-on VPN guidance.
+- **Privacy:** HWID is sent to the provider only after explicit consent;
+  diagnostics export is redacted; secrets (subscription URLs, UUIDs,
+  passwords) are not logged.
+- **App:** English and Russian, light/dark/system theme, dynamic colour.
+
+The UI shows only what the connection state machine reports; there is no
+decorative "Connected".
 
 ## Status
 
-Early implementation — see `docs/` for architecture, testing and known limits.
-Core decision record: `docs/adr/ADR-0001-vpn-core.md`.
+A working client, runs on the author's phone. Not yet on Google Play.
+Still open: first-run onboarding, a published privacy policy URL, and a
+decision on the artwork/mascot licence. Details are in `docs/`.
+
+Verified on a physical phone (Android 16) and an emulator; the build and
+JVM unit tests (parsers, classifier, redaction, state machine) run in CI.
+Anything touching the VPN path is checked on a device, not just in unit tests.
+
+## Architecture
+
+`ConnectionManager` owns the connection state machine and is the only thing the
+UI talks to. The sing-box/libbox types live behind a `VpnEngine` boundary in
+`core.engine.singbox`; swapping the core would not touch the UI. Subscriptions go
+through a fetch → classify → parse → validate → commit pipeline.
+See `docs/ARCHITECTURE.md`, `docs/SECURITY.md` and
+`docs/adr/ADR-0001-vpn-core.md`.
 
 ## Build
 
@@ -36,13 +87,6 @@ Requirements (from the build files, not from memory):
 
 Instrumented tests: see `docs/TESTING.md`. Never run `connected*` Gradle tasks
 on a physical device — they uninstall the app and erase its data.
-
-## Emulator verification
-
-```bash
-adb -s emulator-5560 install -r app/build/outputs/apk/debug/app-debug.apk
-adb -s emulator-5560 shell am start -n dev.typenil.vpnclient/.MainActivity
-```
 
 ## Layout
 
