@@ -160,7 +160,262 @@ internal fun AfterglowHomeContent(
     onOpenDetails: () -> Unit,
     onOpenDiagnostics: () -> Unit,
     onOpenRouting: () -> Unit,
-    onOpenServers: () -> Unit = {},
+    onOpenServers: () -> Unit = {
+    val colors = AfterglowTheme.colors
+    val state = ui.connection
+    val connected = state is VpnConnectionState.Connected
+    val busy = state is VpnConnectionState.Preparing ||
+        state is VpnConnectionState.Connecting ||
+        state is VpnConnectionState.Reconnecting ||
+        state is VpnConnectionState.Stopping ||
+        state == VpnConnectionState.PermissionRequired
+    val noServers = ui.serverOptions.isEmpty() &&
+        (state is VpnConnectionState.Idle || state is VpnConnectionState.Error)
+    var statsExpanded by rememberSaveable { mutableStateOf(false) }
+    val accent = if (connected) Color(0xFF2BAE57) else Color(0xFF4C8DFF)
+    val cardShape = RoundedCornerShape(22.dp)
+
+    Box(modifier.fillMaxSize().background(Color(0xFFFAFBFD))) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .widthIn(max = 560.dp)
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            // Pingwin-style brand header and add-connection menu entry.
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_sayan_mark),
+                    contentDescription = null,
+                    modifier = Modifier.size(38.dp),
+                )
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    text = "sayanvpn",
+                    color = Color(0xFF10285A),
+                    fontSize = 29.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.7).sp,
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.nav_settings), tint = Color(0xFF17325F))
+                }
+                Text(
+                    text = "+",
+                    color = Color(0xFF17325F),
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Light,
+                    modifier = Modifier
+                        .clickable { if (noServers) onAddServer() else onOpenServers() }
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+
+            // Server selector: same white rounded card pattern as Pingwin.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(cardShape)
+                    .background(Color.White)
+                    .border(1.dp, Color(0xFFE9EDF6), cardShape)
+                    .clickable { onPick() }
+                    .padding(horizontal = 18.dp, vertical = 15.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(if (connected) "🌐" else "🌐", fontSize = 28.sp)
+                Spacer(Modifier.width(13.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = ui.selectedNodeName ?: stringResource(R.string.afterglow_selected_server),
+                        color = Color(0xFF17191F),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = ui.selectedNodeProtocol ?: stringResource(R.string.afterglow_no_usable_servers),
+                        color = Color(0xFF697184),
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text("⌄", fontSize = 22.sp, color = Color(0xFF455064))
+            }
+
+            // The central connection control replaces the previous home hero entirely.
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(184.dp)
+                        .shadow(14.dp, CircleShape, ambientColor = accent.copy(alpha = 0.25f), spotColor = accent.copy(alpha = 0.25f))
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(1.5.dp, accent, CircleShape)
+                        .clickable(enabled = !busy && !noServers) {
+                            if (connected) onDisconnect() else onConnect()
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_sayan_mark),
+                        contentDescription = null,
+                        modifier = Modifier.size(104.dp),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = when {
+                        connected -> stringResource(R.string.afterglow_online)
+                        state is VpnConnectionState.Error -> stringResource(R.string.afterglow_retry)
+                        busy -> stringResource(R.string.afterglow_status_reconnecting)
+                        noServers -> stringResource(R.string.common_add_server_cta)
+                        else -> stringResource(R.string.afterglow_start)
+                    },
+                    color = Color(0xFF15171C),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("ϟ", fontSize = 21.sp, color = if (connected) Color(0xFF2BAE57) else Color(0xFF8B94A5))
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        text = if (connected) ui.selectedDelayMs?.let { "$it ms" } ?: "— ms" else "— ms",
+                        fontSize = 17.sp,
+                        color = if (connected) Color(0xFF17191F) else Color(0xFF8B94A5),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "↻",
+                        fontSize = 19.sp,
+                        color = if (connected) Color(0xFF657084) else Color(0xFFB0B6C1),
+                        modifier = Modifier.clickable(enabled = connected) { onOpenDiagnostics() }.padding(horizontal = 4.dp, vertical = 2.dp),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                if (noServers) {
+                    Box(
+                        Modifier.fillMaxWidth().clip(cardShape).background(Color(0xFF2F6FED))
+                            .clickable { onAddServer() }.padding(horizontal = 18.dp, vertical = 15.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(stringResource(R.string.common_add_server_cta), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Box(
+                        Modifier.fillMaxWidth().clip(cardShape).background(Color(0xFF2F6FED))
+                            .clickable(enabled = !busy) { if (connected) onDisconnect() else onConnect() }
+                            .padding(horizontal = 18.dp, vertical = 15.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (connected) stringResource(R.string.afterglow_stop)
+                                else if (state is VpnConnectionState.Error) stringResource(R.string.afterglow_retry)
+                                else stringResource(R.string.afterglow_start),
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            if (errorMessage != null) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFFFE9EC)).clickable {
+                            if (onDismissNotice != null) onDismissNotice() else onOpenDiagnostics()
+                        }.padding(14.dp),
+                ) {
+                    Text(errorMessage, color = Color(0xFF9E2638), modifier = Modifier.weight(1f))
+                    Text("›", color = Color(0xFF9E2638), fontSize = 22.sp)
+                }
+            }
+            if (state == VpnConnectionState.PermissionRequired) {
+                Text(stringResource(R.string.afterglow_permission_explanation), color = Color(0xFF697184), fontSize = 14.sp)
+            }
+            if (ui.restartGuardTripped) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(0xFFFFF4D8))
+                        .clickable { onDismissGuard() }.padding(14.dp),
+                ) {
+                    Text(stringResource(R.string.home_restart_guard_text), color = Color(0xFF73510B))
+                }
+            }
+            batteryHint()
+
+            // Pingwin-style stacked settings/routing cards, retaining SayanVPN actions.
+            Column(
+                Modifier.fillMaxWidth().clip(cardShape).background(Color.White)
+                    .border(1.dp, Color(0xFFE9EDF6), cardShape),
+            ) {
+                PingwinStyleRow("⇄", Color(0xFF2F6FED), Color(0xFFEAF1FF),
+                    stringResource(R.string.afterglow_routing_title), stringResource(R.string.afterglow_quick_access), onOpenRouting)
+                Box(Modifier.fillMaxWidth().padding(start = 69.dp, end = 16.dp).height(1.dp).background(Color(0xFFE9ECF1)))
+                PingwinStyleRow("◎", Color(0xFF2BAE57), Color(0xFFEAF8EF),
+                    stringResource(R.string.nav_servers), stringResource(R.string.afterglow_servers_available, ui.serverOptions.size), onOpenServers)
+                Box(Modifier.fillMaxWidth().padding(start = 69.dp, end = 16.dp).height(1.dp).background(Color(0xFFE9ECF1)))
+                PingwinStyleRow("▤", Color(0xFF2F6FED), Color(0xFFEAF1FF),
+                    stringResource(R.string.nav_subscriptions), stringResource(R.string.afterglow_subscriptions_enabled, ui.enabledSubscriptionCount), onOpenSubscriptions)
+            }
+
+            if (connected) {
+                Column(
+                    Modifier.fillMaxWidth().clip(cardShape).background(Color.White)
+                        .border(1.dp, Color(0xFFE9EDF6), cardShape).padding(16.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.afterglow_session_elapsed, uptimeText(state.since, Instant.now())),
+                        color = Color(0xFF17191F), fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(if (statsExpanded) R.string.home_stats_hide else R.string.home_stats_show),
+                        color = Color(0xFF2F6FED), fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { statsExpanded = !statsExpanded }.padding(vertical = 6.dp),
+                    )
+                    if (statsExpanded) {
+                        val stats = state.stats
+                        if (stats == null) {
+                            Text(stringResource(R.string.afterglow_stats_unavailable), color = Color(0xFF697184))
+                        } else {
+                            Text(
+                                stringResource(R.string.home_stat_connections),
+                                color = Color(0xFF17191F), fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.fillMaxWidth().clickable { onOpenConnections() }.padding(vertical = 10.dp),
+                            )
+                            Text(stringResource(R.string.home_stat_download) + ": " + formatRate(stats.downlinkBytesPerSec), color = Color(0xFF697184))
+                            Text(stringResource(R.string.home_stat_upload) + ": " + formatRate(stats.uplinkBytesPerSec), color = Color(0xFF697184))
+                            Text(stringResource(R.string.home_stat_total_suffix, formatBytes(stats.uplinkTotalBytes + stats.downlinkTotalBytes)), color = Color(0xFF697184))
+                        }
+                    }
+                    Text(
+                        stringResource(R.string.afterglow_open_diagnostics),
+                        color = Color(0xFF2F6FED), modifier = Modifier.clickable { onOpenDetails() }.padding(top = 8.dp),
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+},
     onOpenSubscriptions: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onDismissGuard: () -> Unit,
