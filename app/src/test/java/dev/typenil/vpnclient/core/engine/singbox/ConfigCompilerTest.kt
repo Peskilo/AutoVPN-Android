@@ -5,6 +5,7 @@ import dev.typenil.vpnclient.core.engine.DnsProfile
 import dev.typenil.vpnclient.core.engine.DnsUpstream
 import dev.typenil.vpnclient.core.engine.RouteMode
 import dev.typenil.vpnclient.core.engine.RoutingRule
+import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.core.subscription.model.ProtocolType
 import dev.typenil.vpnclient.core.subscription.model.ProxyNode
 import kotlinx.serialization.json.Json
@@ -62,6 +63,36 @@ class ConfigCompilerTest {
         val vless = outbounds[2].jsonObject
         assertEquals("n1", vless["tag"]!!.jsonPrimitive.content)
         assertEquals(443, vless["server_port"]!!.jsonPrimitive.int)
+    }
+
+    @Test
+    fun `automatic groups split Russian and non Russian nodes`() {
+        val nodes = listOf(
+            node("ca", "Canada"),
+            node("ru-name", "Russia #1"),
+            node("ru-local", "Москва 🇷🇺"),
+            node("jp", "Japan"),
+        )
+        val config = compiler.build(
+            nodes,
+            NodeSelection.AUTO_RUSSIA_ID,
+            true,
+            selectAuto = true,
+        )
+        val root = json.parseToJsonElement(config.configJson).jsonObject
+        val outbounds = root["outbounds"]!!.jsonArray
+        val groups = outbounds
+            .filter { it.jsonObject["type"]!!.jsonPrimitive.content == "urltest" }
+            .associate { group ->
+                group.jsonObject["tag"]!!.jsonPrimitive.content to
+                    group.jsonObject["outbounds"]!!.jsonArray.map { it.jsonPrimitive.content }.toSet()
+            }
+
+        assertEquals(setOf("ca", "jp"), groups["auto"])
+        assertEquals(setOf("ru-name", "ru-local"), groups["auto-ru"])
+        assertEquals("auto-ru", outbounds.first { it.jsonObject["tag"]!!.jsonPrimitive.content == "proxy" }
+            .jsonObject["default"]!!.jsonPrimitive.content)
+        assertEquals(NodeSelection.AUTO_RUSSIA_ID, config.node.id)
     }
 
     @Test
