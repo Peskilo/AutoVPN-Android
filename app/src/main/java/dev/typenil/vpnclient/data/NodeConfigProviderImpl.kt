@@ -109,16 +109,20 @@ class NodeConfigProviderImpl
                 else -> nodeDao.get(id)?.toDomain()?.summary()
             }
 
-        /*
-                nodeDao.get(id)?.toDomain()?.summary()
-            }
-
         override suspend fun isSelectionAllowed(id: String): Boolean =
-            if (id == NodeSelection.AUTO_ID) {
-                nodeDao.getUsable().any { isTunnelAllowed(it.toDomain()) }
-            } else {
-                // Missing nodes retain the compiler's existing stale-selection handling.
-                nodeDao.get(id)?.let { isTunnelAllowed(it.toDomain()) } ?: true
+            when (id) {
+                NodeSelection.AUTO_ID -> nodeDao.getUsable().any {
+                    val node = it.toDomain()
+                    !node.isRussianServer() && isTunnelAllowed(node)
+                }
+                NodeSelection.AUTO_RUSSIA_ID -> nodeDao.getUsable().any {
+                    val node = it.toDomain()
+                    node.isRussianServer() && isTunnelAllowed(node)
+                }
+                else -> {
+                    // Missing nodes retain the compiler's existing stale-selection handling.
+                    nodeDao.get(id)?.let { isTunnelAllowed(it.toDomain()) } ?: true
+                }
             }
 
         override suspend fun revertSelectionIf(rejected: String, to: String): Boolean =
