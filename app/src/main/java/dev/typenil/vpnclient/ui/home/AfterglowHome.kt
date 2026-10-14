@@ -153,10 +153,11 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
                 bitmap = bitmap!!,
                 contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
                 contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
                 modifier = Modifier.fillMaxSize().graphicsLayer {
-                    scaleX = 1.18f
-                    scaleY = 1.18f
-                    translationY = 10.dp.toPx()
+                    scaleX = 1.12f
+                    scaleY = 1.12f
+                    translationY = 0.dp.toPx()
                 },
             )
         } else {
