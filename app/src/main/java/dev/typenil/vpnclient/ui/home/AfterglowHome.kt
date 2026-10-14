@@ -182,7 +182,7 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
                 val resourceId = if (isSuperSaiyan) R.drawable.goku_ssj else R.drawable.goku_base
                 val decoded = BitmapFactory.decodeResource(context.resources, resourceId)
                     ?: return@runCatching null
-                (if (isSuperSaiyan) removeCheckerboardMatte(decoded) else decoded).asImageBitmap()
+                removeCheckerboardMatte(decoded).asImageBitmap()
             }.getOrNull()
         }
     }
@@ -193,7 +193,7 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
                 contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
                 contentScale = ContentScale.Fit,
                 alignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize(),
+                modifier = if (isSuperSaiyan) Modifier.fillMaxSize() else Modifier.fillMaxSize(0.94f),
             )
         } else {
             Image(
