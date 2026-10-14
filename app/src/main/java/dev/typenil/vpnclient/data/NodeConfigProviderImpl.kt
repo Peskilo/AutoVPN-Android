@@ -13,6 +13,7 @@ import dev.typenil.vpnclient.core.subscription.model.ProtocolType
 import dev.typenil.vpnclient.core.subscription.model.ProxyNode
 import dev.typenil.vpnclient.core.subscription.model.summary
 import dev.typenil.vpnclient.core.subscription.model.isTunnelAllowed
+import dev.typenil.vpnclient.core.subscription.model.isRussianServer
 import dev.typenil.vpnclient.core.vpn.NodeConfigProvider
 import dev.typenil.vpnclient.data.db.NodeDao
 import dev.typenil.vpnclient.data.db.NodeEntity
@@ -102,9 +103,13 @@ class NodeConfigProviderImpl
         override suspend fun nodeSummary(id: String): NodeSummary? =
             // The Auto sentinel has no node row — its label comes from the
             // compiler's AUTO_NODE_SUMMARY, not the database.
-            if (id == NodeSelection.AUTO_ID) {
-                ConfigCompiler.AUTO_NODE_SUMMARY
-            } else {
+            when (id) {
+                NodeSelection.AUTO_ID -> ConfigCompiler.AUTO_NODE_SUMMARY
+                NodeSelection.AUTO_RUSSIA_ID -> ConfigCompiler.AUTO_RUSSIA_NODE_SUMMARY
+                else -> nodeDao.get(id)?.toDomain()?.summary()
+            }
+
+        /*
                 nodeDao.get(id)?.toDomain()?.summary()
             }
 
@@ -133,7 +138,9 @@ class NodeConfigProviderImpl
             // here so a connect in that window falls back instead of failing.
             // The conditional clear can't wipe a selection the user just made.
             val persisted = settings.selectedNodeId.first()
-            if (persisted != null && persisted != NodeSelection.AUTO_ID &&
+            if (persisted != null &&
+                persisted != NodeSelection.AUTO_ID &&
+                persisted != NodeSelection.AUTO_RUSSIA_ID &&
                 nodes.none { it.id == persisted }
             ) {
                 settings.clearSelectedNodeIdIf(persisted)
@@ -150,7 +157,7 @@ class NodeConfigProviderImpl
                     routeMode = routeMode,
                     underlayIpv6 = resolveUnderlayIpv6(),
                     ruleSetPaths = ruleSetStore.ensureReady(routeMode),
-                    selectAuto = pick == NodeSelection.AUTO_ID,
+                    selectAuto = pick == NodeSelection.AUTO_ID || pick == NodeSelection.AUTO_RUSSIA_ID,
                     bypassLan = settings.bypassLan.first(),
                     dnsProfile = settings.dnsProfile.first(),
                     userRules = userRoutingRules(),
