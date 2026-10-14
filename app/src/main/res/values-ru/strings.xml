@@ -110,6 +110,8 @@
     <string name="common_disabled">выключено</string>
     <string name="common_none">—</string>
     <string name="common_auto_fastest">Автовыбор</string>
+    <string name="common_auto_russia">Авторус 🇷🇺</string>
+    <string name="home_auto_russia_subtitle">Автоматически выбирает сервер только в России</string>
     <string name="common_no_servers_yet">Пока нет серверов</string>
     <string name="common_add_servers_hint">Добавьте подписку или вставьте ссылку на сервер, чтобы начать.</string>
     <string name="common_add_server_cta">Добавить подписку или ссылку</string>
