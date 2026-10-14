@@ -191,6 +191,26 @@ fun SubscriptionsScreen(
                 modifier = Modifier.weight(1f),
             )
         }
+        if (ui.profiles.any { !SubscriptionRepository.isManualSubscription(it.url) }) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = viewModel::refreshAll,
+                    enabled = ui.refreshingIds.isEmpty(),
+                ) {
+                    if (ui.refreshingIds.isNotEmpty()) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.subs_refresh_all))
+                }
+            }
+        }
         if (ui.profiles.isEmpty()) {
             Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                 Text(
