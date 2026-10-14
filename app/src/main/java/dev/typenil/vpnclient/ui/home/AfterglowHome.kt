@@ -264,6 +264,22 @@ internal fun AfterglowHomeContent(
                     letterSpacing = 0.8.sp,
                 )
                 Spacer(Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFEAF2FF))
+                        .clickable { onOpenSubscriptions() }
+                        .padding(horizontal = 11.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.nav_subscriptions),
+                        color = Color(0xFF244B86),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = "+",
                     color = Color(0xFF17325F),
