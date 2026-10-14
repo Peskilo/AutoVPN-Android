@@ -73,6 +73,7 @@ import dev.typenil.vpnclient.R
 import dev.typenil.vpnclient.core.engine.singbox.NodeTlsSummary
 import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.core.subscription.model.isRussianServer
+import dev.typenil.vpnclient.data.toDomain
 import dev.typenil.vpnclient.ui.theme.AfterglowTheme
 import dev.typenil.vpnclient.data.LatencyMethod
 import dev.typenil.vpnclient.data.NodeLatency
