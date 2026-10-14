@@ -12,6 +12,7 @@ import dev.typenil.vpnclient.core.engine.pickBestLatency
 import dev.typenil.vpnclient.core.subscription.SubscriptionRepository
 import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.core.subscription.model.isEncrypted
+import dev.typenil.vpnclient.core.subscription.model.isRussianServer
 import dev.typenil.vpnclient.core.subscription.model.isTunnelAllowed
 import dev.typenil.vpnclient.core.vpn.VpnError
 import dev.typenil.vpnclient.data.toDomain
@@ -88,7 +89,7 @@ internal fun HomeUiState.withAppliedServerOnRejection(): HomeUiState {
         else -> return this
     }
     return copy(selectedNodeName = node.name, selectedNodeProtocol = node.protocol.label,
-        autoSelected = node.id == NodeSelection.AUTO_ID, selectedDelayMs = null,
+        autoSelected = node.id == NodeSelection.AUTO_ID || node.id == NodeSelection.AUTO_RUSSIA_ID, selectedDelayMs = null,
         selectedDelayStaleMinutes = null)
 }
 
@@ -272,12 +273,12 @@ class HomeViewModel
                         (pref?.isEnabled ?: true) && !(pref?.isHidden ?: false)
                     }
                 val selected = usableNodes.firstOrNull { it.id == selectedId }
-                val auto = selectedId == NodeSelection.AUTO_ID
+                val auto = selectedId == NodeSelection.AUTO_ID || selectedId == NodeSelection.AUTO_RUSSIA_ID
                 val subscriptionNames = profiles.associate { it.id to it.name }
                 // What the header describes: the picked node, or — for Auto —
                 // the urltest group's measured winner. "First enabled
                 // subscription" would name a provider the session isn't using.
-                val autoGroup = groups.firstOrNull { it.tag == NodeSelection.AUTO_ID }
+                val autoGroup = groups.firstOrNull { it.tag == if (selectedId == NodeSelection.AUTO_RUSSIA_ID) NodeSelection.AUTO_RUSSIA_ID else NodeSelection.AUTO_ID }
                 // Only fresh measurements count: a stale last-good delay of a
                 // dead node must not be named the best (see UrlTestFreshness).
                 val bestItem = autoGroup?.items?.let { pickBestLatency(it, nowMs) }
@@ -326,14 +327,26 @@ class HomeViewModel
                             emptyList()
                         } else {
                             buildList {
-                                add(
-                                    ServerOption(
-                                        id = NodeSelection.AUTO_ID,
-                                        titleRes = R.string.common_auto_fastest,
-                                        subtitleRes = R.string.home_auto_subtitle,
-                                        searchText = NodeSelection.AUTO_ID,
-                                    ),
-                                )
+                                if (usableNodes.any { !it.toDomain().isRussianServer() }) {
+                                    add(
+                                        ServerOption(
+                                            id = NodeSelection.AUTO_ID,
+                                            titleRes = R.string.common_auto_fastest,
+                                            subtitleRes = R.string.home_auto_subtitle,
+                                            searchText = "auto fastest non-russian",
+                                        ),
+                                    )
+                                }
+                                if (usableNodes.any { it.toDomain().isRussianServer() }) {
+                                    add(
+                                        ServerOption(
+                                            id = NodeSelection.AUTO_RUSSIA_ID,
+                                            titleRes = R.string.common_auto_russia,
+                                            subtitleRes = R.string.home_auto_russia_subtitle,
+                                            searchText = "auto russia россия 🇷🇺",
+                                        ),
+                                    )
+                                }
                                 // Favorites first, right after Auto — the
                                 // quick pick is where they pay off. Original
                                 // order (subscriptionId, position) is kept
@@ -395,7 +408,7 @@ class HomeViewModel
                                         ?.selected
                                         ?.let { tag ->
                                             when {
-                                                tag == NodeSelection.AUTO_ID -> null
+                                                tag == NodeSelection.AUTO_ID || tag == NodeSelection.AUTO_RUSSIA_ID || tag == NodeSelection.AUTO_RUSSIA_ID -> null
                                                 else -> nodes.firstOrNull { it.id == tag }?.name ?: tag
                                             }
                                         },
