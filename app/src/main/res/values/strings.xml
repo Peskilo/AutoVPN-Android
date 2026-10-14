@@ -109,6 +109,8 @@
     <string name="common_disabled">disabled</string>
     <string name="common_none">—</string>
     <string name="common_auto_fastest">Auto</string>
+    <string name="common_auto_russia">Auto Russia</string>
+    <string name="home_auto_russia_subtitle">Automatically picks the lowest-latency Russian server only</string>
     <string name="common_no_servers_yet">No servers yet</string>
     <string name="common_add_servers_hint">Add a subscription or paste a share link to get started.</string>
     <string name="common_add_server_cta">Add subscription or share link</string>
