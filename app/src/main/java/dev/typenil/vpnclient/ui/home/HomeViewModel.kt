@@ -414,15 +414,10 @@ class HomeViewModel
                                             }
                                         },
                                 activeOutboundRes =
-                                    if (
-                                        groups
-                                            .firstOrNull { it.selectable }
-                                            ?.selected == NodeSelection.AUTO_ID ||
-                                            groups.firstOrNull { it.selectable }?.selected == NodeSelection.AUTO_RUSSIA_ID
-                                    ) {
-                                        R.string.common_auto_fastest
-                                    } else {
-                                        null
+                                    when (groups.firstOrNull { it.selectable }?.selected) {
+                                        NodeSelection.AUTO_ID -> R.string.common_auto_fastest
+                                        NodeSelection.AUTO_RUSSIA_ID -> R.string.common_auto_russia
+                                        else -> null
                                     },
                                 // Applied plan — a route-mode change is only
                                 // real after a reconnect, and per-app after a
