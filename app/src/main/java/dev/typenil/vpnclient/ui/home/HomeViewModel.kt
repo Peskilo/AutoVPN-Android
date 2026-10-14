@@ -142,7 +142,7 @@ class HomeViewModel
     @Inject
     constructor(
         private val connectionManager: ConnectionManager,
-        nodeDao: NodeDao,
+        private val nodeDao: NodeDao,
         nodePreferenceDao: NodePreferenceDao,
         private val settings: SettingsRepository,
         subscriptions: SubscriptionRepository,
