@@ -793,11 +793,13 @@ class ConnectionManager
                                 current is VpnConnectionState.Connected ||
                                     current is VpnConnectionState.Reconnecting
                             ) &&
-                            sessionNode?.id == NodeSelection.AUTO_ID
+                            sessionNode?.id == NodeSelection.AUTO_ID ||
+                            sessionNode?.id == NodeSelection.AUTO_RUSSIA_ID
                         ) {
-                            val resolved = resolveAutoWinnerTag(groups)
+                            val selectedAutoId = sessionNode?.id ?: NodeSelection.AUTO_ID
+                            val resolved = resolveAutoWinnerTag(groups, selectedAutoId)
                             if (resolved != null) {
-                                updateSessionNode(NodeSelection.AUTO_ID, resolvedTag = resolved)
+                                updateSessionNode(selectedAutoId, resolvedTag = resolved)
                             }
                         }
                     }
@@ -928,6 +930,7 @@ class ConnectionManager
                 val desiredTag =
                     when (selection) {
                         NodeSelection.Auto -> NodeSelection.AUTO_ID
+                        NodeSelection.AutoRussia -> NodeSelection.AUTO_RUSSIA_ID
                         is NodeSelection.Node -> selection.id
                     }
                 // Groups arrive after the command client connects — a fresh engine
@@ -976,7 +979,14 @@ class ConnectionManager
                 NodeSelection.Auto -> {
                     updateSessionNode(
                         NodeSelection.AUTO_ID,
-                        resolvedTag = resolveAutoWinnerTag(groups),
+                        resolvedTag = resolveAutoWinnerTag(groups, NodeSelection.AUTO_ID),
+                    )
+                }
+
+                NodeSelection.AutoRussia -> {
+                    updateSessionNode(
+                        NodeSelection.AUTO_RUSSIA_ID,
+                        resolvedTag = resolveAutoWinnerTag(groups, NodeSelection.AUTO_RUSSIA_ID),
                     )
                 }
 
@@ -991,8 +1001,11 @@ class ConnectionManager
          * auto/urltest group. Only explicit non-blank selections reported by
          * the core are honored; we never guess egress from delay metrics.
          */
-        private fun resolveAutoWinnerTag(groups: List<OutboundGroupInfo>): String? {
-            val autoGroup = groups.firstOrNull { it.tag == NodeSelection.AUTO_ID } ?: return null
+        private fun resolveAutoWinnerTag(
+            groups: List<OutboundGroupInfo>,
+            groupTag: String = NodeSelection.AUTO_ID,
+        ): String? {
+            val autoGroup = groups.firstOrNull { it.tag == groupTag } ?: return null
             return autoGroup.selected?.takeIf { it.isNotBlank() }
         }
 
@@ -1007,8 +1020,8 @@ class ConnectionManager
         private fun effectiveOutboundChain(groups: List<OutboundGroupInfo>): Pair<String?, String?> {
             val selector = groups.firstOrNull { it.tag == ConfigCompiler.SELECTOR_TAG }?.selected
             val winner =
-                if (selector == NodeSelection.AUTO_ID) {
-                    groups.firstOrNull { it.tag == NodeSelection.AUTO_ID }?.selected
+                if (selector == NodeSelection.AUTO_ID || selector == NodeSelection.AUTO_RUSSIA_ID) {
+                    groups.firstOrNull { it.tag == selector }?.selected
                 } else {
                     null
                 }
@@ -1025,7 +1038,7 @@ class ConnectionManager
             resolvedTag: String? = null,
         ) {
             var summary = configProvider.nodeSummary(id) ?: return
-            if (summary.id == NodeSelection.AUTO_ID) {
+            if (summary.id == NodeSelection.AUTO_ID || summary.id == NodeSelection.AUTO_RUSSIA_ID) {
                 // No member is impersonated: until the urltest group reports a
                 // pick the label stays the generic "Auto".
                 val resolved = resolvedTag?.let { configProvider.nodeSummary(it) }
