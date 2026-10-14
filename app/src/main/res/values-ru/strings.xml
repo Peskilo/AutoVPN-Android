@@ -103,6 +103,7 @@
     <string name="common_dismiss">Скрыть</string>
     <string name="common_done">Готово</string>
     <string name="common_refresh">Обновить</string>
+    <string name="subs_refresh_all">Обновить все</string>
     <string name="common_back">Назад</string>
     <string name="common_selected">Выбрано</string>
     <string name="common_clear_search">Очистить поиск</string>
