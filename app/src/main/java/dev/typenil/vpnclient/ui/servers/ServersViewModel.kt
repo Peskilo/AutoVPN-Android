@@ -455,7 +455,7 @@ class ServersViewModel
                 ServersUiState(
                     groups = groups,
                     selectedNodeId = selectedId,
-                    autoSelected = selectedId == NodeSelection.AUTO_ID,
+                    autoSelected = selectedId == NodeSelection.AUTO_ID || selectedId == NodeSelection.AUTO_RUSSIA_ID,
                     delays = delays,
                     testedNodeIds = testedIds,
                     storedLatency = surface.stored,
@@ -574,6 +574,11 @@ class ServersViewModel
          *  sentinel; the compiler/live reconciler route it to the urltest group. */
         fun selectAuto() {
             viewModelScope.launch { settings.setSelectedNodeId(NodeSelection.AUTO_ID) }
+        }
+
+        /** Persist the Russia-only automatic mode. */
+        fun selectAutoRussia() {
+            viewModelScope.launch { settings.setSelectedNodeId(NodeSelection.AUTO_RUSSIA_ID) }
         }
 
         /**
