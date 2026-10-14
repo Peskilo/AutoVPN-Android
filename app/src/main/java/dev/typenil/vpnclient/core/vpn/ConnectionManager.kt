@@ -789,12 +789,11 @@ class ConnectionManager
                         // winner is what Home should name — refresh the label as
                         // the group reports it.
                         val current = _state.value
-                        if ((
-                                current is VpnConnectionState.Connected ||
-                                    current is VpnConnectionState.Reconnecting
-                            ) &&
-                            sessionNode?.id == NodeSelection.AUTO_ID ||
-                            sessionNode?.id == NodeSelection.AUTO_RUSSIA_ID
+                        if (
+                            (current is VpnConnectionState.Connected ||
+                                current is VpnConnectionState.Reconnecting) &&
+                            (sessionNode?.id == NodeSelection.AUTO_ID ||
+                                sessionNode?.id == NodeSelection.AUTO_RUSSIA_ID)
                         ) {
                             val selectedAutoId = sessionNode?.id ?: NodeSelection.AUTO_ID
                             val resolved = resolveAutoWinnerTag(groups, selectedAutoId)
