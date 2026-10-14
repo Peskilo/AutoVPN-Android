@@ -271,6 +271,10 @@ internal fun nodeSetFingerprint(entities: List<NodeEntity>): String {
         digest.update(0)
         digest.update(node.outboundJson.toByteArray(Charsets.UTF_8))
         digest.update(0)
+        // Auto groups depend on the provider's country label; a country
+        // classification change must rebuild a live config even if the
+        // actual outbound settings stayed the same.
+        digest.update(if (node.toDomain().isRussianServer()) 1.toByte() else 0.toByte())
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
