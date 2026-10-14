@@ -4,17 +4,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#071225" android:pathData="M0,0h108v108h-108z"/>
-    <path android:fillColor="#15345D" android:pathData="M54,4A50,50 0,1 1,54 104A50,50 0,1 1,54 4Z"/>
-    <path android:fillColor="#2DC7F4" android:pathData="M54,9A45,45 0,1 1,54 99A45,45 0,1 1,54 9Z"/>
-    <path android:fillColor="#EAF4FF" android:pathData="M54,15A39,39 0,1 1,54 93A39,39 0,1 1,54 15Z"/>
-    <!-- Bright Super Saiyan silhouette: large spikes remain legible at launcher size. -->
-    <path android:fillColor="#111827" android:pathData="M27,50L14,25L35,35L30,12L47,29L54,5L63,29L81,12L77,35L97,26L82,52L77,65L67,75L40,75L31,64Z"/>
-    <path android:fillColor="#F2BC91" android:pathData="M35,39Q54,31 73,39L69,63Q64,75 54,78Q43,74 38,63Z"/>
-    <path android:fillColor="#B8754F" android:pathData="M37,45L49,43L48,47L38,48Z M60,43L72,45L70,48L60,47Z"/>
-    <path android:fillColor="#18243A" android:pathData="M39,50L49,49L47,53L39,53Z M59,49L69,50L69,53L60,53Z"/>
-    <path android:fillColor="#713D35" android:pathData="M47,62L53,64L55,62L61,62L58,67L54,69L49,67Z"/>
-    <path android:fillColor="#EF762F" android:pathData="M27,94L34,74L44,77L54,85L64,77L74,74L81,94L81,102L27,102Z"/>
-    <path android:fillColor="#1769B1" android:pathData="M45,79L54,86L63,79L67,102L41,102Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M49,86L54,91L59,86L58,96L50,96Z"/>
+    <path android:fillColor="#071426" android:pathData="M0,0h108v108h-108z" />
+    <path android:fillColor="#0B1E38" android:pathData="M54,4A50,50 0,1 1,54 104A50,50 0,1 1,54 4Z" />
+    <path android:fillColor="#163D69" android:pathData="M54,11A43,43 0,1 1,54 97A43,43 0,1 1,54 11Z" />
+    <path android:fillColor="#2CC7F4" android:pathData="M54,17A37,37 0,1 1,54 91A37,37 0,1 1,54 17Z" />
+    <path android:fillColor="#F4FAFF" android:pathData="M54,23A31,31 0,1 1,54 85A31,31 0,1 1,54 23Z" />
+    <path android:fillColor="#10284A" android:pathData="M65,24L36,56L51,56L40,84L73,46L57,46Z" />
+    <path android:fillColor="#2CC7F4" android:pathData="M61,25L33,56L47,56L38,80L70,45L54,45Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M64,25L59,38L69,38L55,53L60,41L52,41Z" />
+    <path android:fillColor="#15345D" android:pathData="M22,75Q30,89 43,94L37,98Q23,92 17,80Z" />
+    <path android:fillColor="#15345D" android:pathData="M86,75Q78,89 65,94L71,98Q85,92 91,80Z" />
 </vector>
