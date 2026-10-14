@@ -196,7 +196,7 @@ internal fun AfterglowHomeContent(
     val noServers = ui.serverOptions.isEmpty() &&
         (state is VpnConnectionState.Idle || state is VpnConnectionState.Error)
     var statsExpanded by rememberSaveable { mutableStateOf(false) }
-    val accent = if (connected) Color(0xFF2BAE57) else Color(0xFF4C8DFF)
+    val accent = if (connected) Color(0xFF2BAE57) else Color(0xFFF28C28)
     val cardShape = RoundedCornerShape(22.dp)
 
     Box(modifier.fillMaxSize().background(Color(0xFFFAFBFD))) {
@@ -332,14 +332,14 @@ internal fun AfterglowHomeContent(
                         .shadow(
                             elevation = if (connected) 18.dp else 10.dp,
                             shape = CircleShape,
-                            ambientColor = if (connected) Color(0xFF26A85B) else Color(0xFF2F6FED),
-                            spotColor = if (connected) Color(0xFF26A85B) else Color(0xFF2F6FED),
+                            ambientColor = if (connected) Color(0xFFE87512) else Color(0xFFF28C28),
+                            spotColor = if (connected) Color(0xFFE87512) else Color(0xFFF28C28),
                         )
                         .clip(CircleShape)
                         .background(
                             Brush.verticalGradient(
-                                if (connected) listOf(Color(0xFF35C96C), Color(0xFF159447))
-                                else listOf(Color(0xFF4C8DFF), Color(0xFF245BE5)),
+                                if (connected) listOf(Color(0xFFFFB84D), Color(0xFFF28C28))
+                                else listOf(Color(0xFFFFA726), Color(0xFFE87512)),
                             ),
                         )
                         .border(1.dp, Color.White.copy(alpha = 0.55f), CircleShape)
@@ -356,17 +356,39 @@ internal fun AfterglowHomeContent(
                         },
                     contentAlignment = Alignment.Center,
                 ) {
+                    // Seven small red stars make the round control read as the
+                    // seventh Dragon Ball, while the whole circle remains clickable.
+                    Canvas(Modifier.fillMaxSize().padding(13.dp)) {
+                        val starColor = Color(0xFFC83220)
+                        val radius = size.minDimension * 0.043f
+                        val orbit = size.minDimension * 0.34f
+                        for (i in 0 until 7) {
+                            val angle = Math.toRadians((-90.0 + i * (360.0 / 7.0)))
+                            val cx = size.width / 2f + kotlin.math.cos(angle).toFloat() * orbit
+                            val cy = size.height / 2f + kotlin.math.sin(angle).toFloat() * orbit
+                            val path = Path()
+                            for (point in 0 until 10) {
+                                val a = -Math.PI / 2.0 + point * Math.PI / 5.0
+                                val r = if (point % 2 == 0) radius else radius * 0.43f
+                                val x = cx + kotlin.math.cos(a).toFloat() * r
+                                val y = cy + kotlin.math.sin(a).toFloat() * r
+                                if (point == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            }
+                            path.close()
+                            drawPath(path, starColor)
+                        }
+                    }
                     Text(
                         text = "⏻",
                         color = Color.White,
-                        fontSize = 52.sp,
+                        fontSize = 48.sp,
                         fontWeight = FontWeight.Light,
                     )
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
                     text = buttonLabel.uppercase(),
-                    color = if (connected) Color(0xFF178448) else Color(0xFF245BE5),
+                    color = if (connected) Color(0xFFB95D0B) else Color(0xFFD96A0B),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.1.sp,
