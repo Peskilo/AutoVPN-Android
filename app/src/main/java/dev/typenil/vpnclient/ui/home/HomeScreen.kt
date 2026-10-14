@@ -201,8 +201,12 @@ internal fun ServerPickerSheet(
                     option.title?.contains(trimmed, ignoreCase = true) == true
             }
         }
+    val localizedAutoTitles = mapOf(
+        NodeSelection.AUTO_ID to stringResource(R.string.common_auto_fastest),
+        NodeSelection.AUTO_RUSSIA_ID to stringResource(R.string.common_auto_russia),
+    )
     val matchingAutos = autos.filter { option ->
-        val title = option.titleRes?.let { stringResource(it) }.orEmpty()
+        val title = localizedAutoTitles[option.id].orEmpty()
         trimmed.isEmpty() ||
             title.contains(trimmed, ignoreCase = true) ||
             option.searchText?.contains(trimmed, ignoreCase = true) == true
