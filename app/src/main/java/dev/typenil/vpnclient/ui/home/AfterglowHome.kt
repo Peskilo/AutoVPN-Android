@@ -110,23 +110,62 @@ private fun VpnConnectionState.visual() = when (this) {
 }
 
 /**
- * The base-form source uses a flat green matte. Remove that matte from the
- * local bitmap so the hero remains clean over the app's light background.
+ * The base image is already a transparent PNG. The Super Saiyan source was
+ * supplied as a JPEG with a checkerboard flattened into its pixels, so remove
+ * only light, nearly-neutral pixels connected to the image boundary. Flood
+ * fill keeps white hair and skin highlights intact because they are enclosed
+ * by the character's dark outlines.
  */
-private fun removeGreenMatte(source: Bitmap): Bitmap {
+private fun removeCheckerboardMatte(source: Bitmap): Bitmap {
     val bitmap = source.copy(Bitmap.Config.ARGB_8888, true)
-    val pixels = IntArray(bitmap.width * bitmap.height)
-    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-    for (i in pixels.indices) {
-        val pixel = pixels[i]
+    val width = bitmap.width
+    val height = bitmap.height
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+    val background = BooleanArray(pixels.size)
+    val queue = IntArray(pixels.size)
+    var head = 0
+    var tail = 0
+
+    fun isMatte(index: Int): Boolean {
+        val pixel = pixels[index]
         val red = android.graphics.Color.red(pixel)
         val green = android.graphics.Color.green(pixel)
         val blue = android.graphics.Color.blue(pixel)
-        if (green > 40 && green > red * 1.13 && green > blue * 1.06 && green - red > 10) {
-            pixels[i] = android.graphics.Color.TRANSPARENT
+        return minOf(red, green, blue) >= 150 &&
+            maxOf(red, green, blue) - minOf(red, green, blue) <= 32
+    }
+
+    fun enqueue(index: Int) {
+        if (!background[index] && isMatte(index)) {
+            background[index] = true
+            queue[tail++] = index
         }
     }
-    bitmap.setPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+    for (x in 0 until width) {
+        enqueue(x)
+        enqueue((height - 1) * width + x)
+    }
+    for (y in 0 until height) {
+        enqueue(y * width)
+        enqueue(y * width + width - 1)
+    }
+
+    while (head < tail) {
+        val index = queue[head++]
+        val x = index % width
+        val y = index / width
+        if (x > 0) enqueue(index - 1)
+        if (x + 1 < width) enqueue(index + 1)
+        if (y > 0) enqueue(index - width)
+        if (y + 1 < height) enqueue(index + width)
+    }
+
+    for (i in background.indices) {
+        if (background[i]) pixels[i] = android.graphics.Color.TRANSPARENT
+    }
+    bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
     return bitmap
 }
 
@@ -143,7 +182,7 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
                 val resourceId = if (isSuperSaiyan) R.drawable.goku_ssj else R.drawable.goku_base
                 val decoded = BitmapFactory.decodeResource(context.resources, resourceId)
                     ?: return@runCatching null
-                (if (isSuperSaiyan) decoded else removeGreenMatte(decoded)).asImageBitmap()
+                (if (isSuperSaiyan) removeCheckerboardMatte(decoded) else decoded).asImageBitmap()
             }.getOrNull()
         }
     }
@@ -152,8 +191,8 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
             Image(
                 bitmap = bitmap!!,
                 contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter,
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
