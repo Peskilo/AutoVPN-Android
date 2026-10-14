@@ -218,15 +218,15 @@ internal fun AfterglowHomeContent(
                 Image(
                     painter = painterResource(R.drawable.ic_sayan_mark),
                     contentDescription = null,
-                    modifier = Modifier.size(38.dp),
+                    modifier = Modifier.size(42.dp),
                 )
-                Spacer(Modifier.width(5.dp))
+                Spacer(Modifier.width(10.dp))
                 Text(
-                    text = "sayanvpn",
-                    color = Color(0xFF10285A),
-                    fontSize = 29.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.7).sp,
+                    text = "SAYANVPN",
+                    color = Color(0xFF10284F),
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.8.sp,
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
@@ -241,37 +241,30 @@ internal fun AfterglowHomeContent(
             }
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(cardShape)
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFE9EDF6), cardShape)
-                    .clickable { onPick() }
-                    .padding(horizontal = 18.dp, vertical = 15.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("🌐", fontSize = 28.sp)
-                Spacer(Modifier.width(13.dp))
-                Column(Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Color(0xFFEAF2FF))
+                        .border(1.dp, Color(0xFFD8E5FC), CircleShape)
+                        .clickable { onPick() }
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        text = ui.selectedNodeName ?: stringResource(R.string.afterglow_selected_server),
-                        color = Color(0xFF17191F),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text = if (ui.autoSelected || ui.selectedNodeName == null) "AUTO" else ui.selectedNodeName!!,
+                        color = Color(0xFF244B86),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = ui.selectedNodeProtocol ?: stringResource(R.string.afterglow_no_usable_servers),
-                        color = Color(0xFF697184),
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text("⌄", color = Color(0xFF55729D), fontSize = 16.sp)
                 }
-                Spacer(Modifier.width(8.dp))
-                Text("⌄", fontSize = 22.sp, color = Color(0xFF455064))
             }
 
             Column(
@@ -281,10 +274,7 @@ internal fun AfterglowHomeContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(232.dp)
-                        .clickable(enabled = !busy && !noServers) {
-                            if (connected) onDisconnect() else onConnect()
-                        },
+                        .height(250.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     GokuArtwork(
@@ -323,31 +313,65 @@ internal fun AfterglowHomeContent(
                         modifier = Modifier.clickable(enabled = connected) { onOpenDiagnostics() }.padding(horizontal = 4.dp, vertical = 2.dp),
                     )
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
+                val buttonLabel = when {
+                    noServers -> stringResource(R.string.common_add_server_cta)
+                    connected -> stringResource(R.string.action_disconnect)
+                    state is VpnConnectionState.Error -> stringResource(R.string.afterglow_retry)
+                    busy -> stringResource(R.string.home_status_connecting)
+                    else -> stringResource(R.string.afterglow_start)
+                }
+                val buttonDescription = when {
+                    noServers -> "Add a server or subscription"
+                    connected -> "Disconnect SayanVPN"
+                    else -> "Connect SayanVPN"
+                }
                 Box(
-                    Modifier.fillMaxWidth().clip(cardShape).background(Color(0xFF2F6FED))
-                        .clickable(enabled = noServers || !busy) {
+                    modifier = Modifier
+                        .size(116.dp)
+                        .shadow(
+                            elevation = if (connected) 18.dp else 10.dp,
+                            shape = CircleShape,
+                            ambientColor = if (connected) Color(0xFF26A85B) else Color(0xFF2F6FED),
+                            spotColor = if (connected) Color(0xFF26A85B) else Color(0xFF2F6FED),
+                        )
+                        .clip(CircleShape)
+                        .background(
+                            Brush.verticalGradient(
+                                if (connected) listOf(Color(0xFF35C96C), Color(0xFF159447))
+                                else listOf(Color(0xFF4C8DFF), Color(0xFF245BE5)),
+                            ),
+                        )
+                        .border(1.dp, Color.White.copy(alpha = 0.55f), CircleShape)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = buttonDescription
+                        }
+                        .clickable(enabled = !busy) {
                             when {
                                 noServers -> onAddServer()
                                 connected -> onDisconnect()
                                 else -> onConnect()
                             }
-                        }
-                        .padding(horizontal = 18.dp, vertical = 15.dp),
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = when {
-                            noServers -> stringResource(R.string.common_add_server_cta)
-                            connected -> stringResource(R.string.action_disconnect)
-                            state is VpnConnectionState.Error -> stringResource(R.string.afterglow_retry)
-                            else -> stringResource(R.string.afterglow_start)
-                        },
+                        text = "⏻",
                         color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 52.sp,
+                        fontWeight = FontWeight.Light,
                     )
                 }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = buttonLabel.uppercase(),
+                    color = if (connected) Color(0xFF178448) else Color(0xFF245BE5),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.1.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
 
             if (errorMessage != null) {
