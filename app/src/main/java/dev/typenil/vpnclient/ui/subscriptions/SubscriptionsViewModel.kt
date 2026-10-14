@@ -277,8 +277,9 @@ class SubscriptionsViewModel
         }
 
         fun refresh(id: Long) {
+            if (id in refreshing.value) return
+            refreshing.update { it + id }
             viewModelScope.launch {
-                refreshing.update { it + id }
                 try {
                     repository
                         .refresh(id)
@@ -291,6 +292,54 @@ class SubscriptionsViewModel
                         }
                 } finally {
                     refreshing.update { it - id }
+                }
+            }
+        }
+
+        /** Refresh every remote subscription in order; local share links have no URL to fetch. */
+        private var refreshAllJob: Job? = null
+
+        fun refreshAll() {
+            if (refreshAllJob?.isActive == true) return
+            val ids = uiState.value.profiles
+                .filterNot { SubscriptionRepository.isManualSubscription(it.url) }
+                .map { it.id }
+                .filterNot { it in refreshing.value }
+            if (ids.isEmpty()) return
+
+            // Reserve the whole batch immediately, preventing row taps or a second batch
+            // from racing the same subscriptions while requests are queued.
+            refreshing.update { it + ids }
+            refreshAllJob = viewModelScope.launch {
+                try {
+                    for (id in ids) {
+                        try {
+                            repository.refresh(id)
+                                .onSuccess { outcome ->
+                                    if (outcome.skipped.isNotEmpty()) skippedSummary(outcome.skipped)
+                                }
+                                .onFailure {
+                                    postSubscriptionFailure(
+                                        it,
+                                        R.string.subs_refresh_failed,
+                                        "Refresh failed",
+                                        (uiState.value.nodeCounts[id] ?: 0) > 0,
+                                    )
+                                }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            postSubscriptionFailure(
+                                e,
+                                R.string.subs_refresh_failed,
+                                "Refresh failed",
+                                (uiState.value.nodeCounts[id] ?: 0) > 0,
+                            )
+                        }
+                    }
+                } finally {
+                    refreshing.update { current -> current - ids.toSet() }
+                    refreshAllJob = null
                 }
             }
         }
