@@ -12,9 +12,11 @@ import dev.typenil.vpnclient.core.engine.RoutingRule
 import dev.typenil.vpnclient.core.engine.URLTEST_INTERVAL_MINUTES
 import dev.typenil.vpnclient.core.subscription.model.NodeSummary
 import dev.typenil.vpnclient.core.subscription.model.ProtocolType
+import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.core.subscription.model.ProxyNode
 import dev.typenil.vpnclient.core.subscription.model.summary
 import dev.typenil.vpnclient.core.subscription.model.isTunnelAllowed
+import dev.typenil.vpnclient.core.subscription.model.isRussianServer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import io.nekohasekai.libbox.Libbox
@@ -97,6 +99,22 @@ class ConfigCompiler
             }
             val allowed = nodes.filter(::isTunnelAllowed)
             if (allowed.isEmpty()) throw EngineError.UnencryptedTransport
+            if (selectAuto) {
+                val candidates = if (selectedNodeId == NodeSelection.AUTO_RUSSIA_ID) {
+                    allowed.filter(ProxyNode::isRussianServer)
+                } else {
+                    allowed.filterNot(ProxyNode::isRussianServer)
+                }
+                if (candidates.isEmpty()) {
+                    throw EngineError.InvalidConfig(
+                        if (selectedNodeId == NodeSelection.AUTO_RUSSIA_ID) {
+                            "no Russian servers found"
+                        } else {
+                            "no non-Russian servers found"
+                        },
+                    )
+                }
+            }
             return assemble(allowed, selectedNodeId, ipv6Enabled, routeMode, underlayIpv6,
                 ruleSetPaths, selectAuto, bypassLan, dnsProfile, userRules)
         }
@@ -165,6 +183,8 @@ class ConfigCompiler
                     }
                 }
             val nodeTags = nodes.map { it.id }
+            val russianNodes = nodes.filter(ProxyNode::isRussianServer)
+            val nonRussianNodes = nodes.filterNot(ProxyNode::isRussianServer)
             val (endpointNodes, outboundNodes) = nodes.partition {
                 (json.parseToJsonElement(it.outboundJson) as JsonObject)["type"] == JsonPrimitive("wireguard")
             }
@@ -175,23 +195,43 @@ class ConfigCompiler
                         put("type", "selector")
                         put("tag", SELECTOR_TAG)
                         putJsonArray("outbounds") {
-                            add(AUTO_TAG)
+                            if (nonRussianNodes.isNotEmpty()) add(AUTO_TAG)
+                            if (russianNodes.isNotEmpty()) add(AUTO_RUSSIA_TAG)
                             nodeTags.forEach { add(it) }
                         }
-                        put("default", selected?.id ?: AUTO_TAG)
+                        put(
+                            "default",
+                            selected?.id ?: if (selectedNodeId == NodeSelection.AUTO_RUSSIA_ID) {
+                                AUTO_RUSSIA_TAG
+                            } else {
+                                AUTO_TAG
+                            },
+                        )
                         put("interrupt_exist_connections", false)
                     }
-                    addJsonObject {
-                        put("type", "urltest")
-                        put("tag", AUTO_TAG)
-                        putJsonArray("outbounds") { nodeTags.forEach { add(it) } }
-                        put("url", "https://www.gstatic.com/generate_204")
-                        put("interval", "${URLTEST_INTERVAL_MINUTES}m")
-                        put("tolerance", 50)
-                        // Stop probing when the group carries no traffic — without
-                        // this the core pings every node every 3m forever.
-                        put("idle_timeout", "20m")
-                        put("interrupt_exist_connections", false)
+                    if (nonRussianNodes.isNotEmpty()) {
+                        addJsonObject {
+                            put("type", "urltest")
+                            put("tag", AUTO_TAG)
+                            putJsonArray("outbounds") { nonRussianNodes.forEach { add(it.id) } }
+                            put("url", "https://www.gstatic.com/generate_204")
+                            put("interval", "${URLTEST_INTERVAL_MINUTES}m")
+                            put("tolerance", 50)
+                            put("idle_timeout", "20m")
+                            put("interrupt_exist_connections", false)
+                        }
+                    }
+                    if (russianNodes.isNotEmpty()) {
+                        addJsonObject {
+                            put("type", "urltest")
+                            put("tag", AUTO_RUSSIA_TAG)
+                            putJsonArray("outbounds") { russianNodes.forEach { add(it.id) } }
+                            put("url", "https://www.gstatic.com/generate_204")
+                            put("interval", "${URLTEST_INTERVAL_MINUTES}m")
+                            put("tolerance", 50)
+                            put("idle_timeout", "20m")
+                            put("interrupt_exist_connections", false)
+                        }
                     }
                     // Outbound-shaped nodes only — WireGuard nodes compile to
                     // `endpoints[]` below (the wireguard outbound was removed in
@@ -476,7 +516,11 @@ class ConfigCompiler
 
             return EngineConfig(
                 configJson = config.toString(),
-                node = selected?.summary() ?: AUTO_NODE_SUMMARY,
+                node = selected?.summary() ?: if (selectedNodeId == NodeSelection.AUTO_RUSSIA_ID) {
+                    AUTO_RUSSIA_NODE_SUMMARY
+                } else {
+                    AUTO_NODE_SUMMARY
+                },
                 routeMode = routeMode,
                 bypassLan = bypassLan,
                 dnsProfile = dnsProfile,
@@ -495,6 +539,7 @@ class ConfigCompiler
         companion object {
             const val SELECTOR_TAG = "proxy"
             const val AUTO_TAG = "auto"
+            const val AUTO_RUSSIA_TAG = "auto-ru"
 
             /** TUN addresses — referenced by LanBypassRoutes keep-routes and
              *  the service's more-specific carve-outs. */
@@ -507,6 +552,14 @@ class ConfigCompiler
                 NodeSummary(
                     id = AUTO_TAG,
                     name = "Auto",
+                    protocol = ProtocolType.OTHER,
+                    server = "",
+                )
+
+            val AUTO_RUSSIA_NODE_SUMMARY =
+                NodeSummary(
+                    id = AUTO_RUSSIA_TAG,
+                    name = "Auto Russia",
                     protocol = ProtocolType.OTHER,
                     server = "",
                 )
