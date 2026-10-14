@@ -154,11 +154,7 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
                 contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.TopCenter,
-                modifier = Modifier.fillMaxSize().graphicsLayer {
-                    scaleX = 1.12f
-                    scaleY = 1.12f
-                    translationY = 0.dp.toPx()
-                },
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
             Image(
@@ -380,12 +376,6 @@ internal fun AfterglowHomeContent(
                             drawPath(path, starColor)
                         }
                     }
-                    Text(
-                        text = "⏻",
-                        color = Color.White,
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Light,
-                    )
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
