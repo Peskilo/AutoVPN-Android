@@ -477,7 +477,15 @@ class HomeViewModel
             viewModelScope.launch {
                 val currentPick = settings.selectedNodeId.first()
                 if (currentPick != NodeSelection.AUTO_ID && currentPick != NodeSelection.AUTO_RUSSIA_ID) {
-                    settings.setSelectedNodeId(NodeSelection.AUTO_ID)
+                    val availableNodes = nodeDao.getEnabled().map { it.toDomain() }
+                    when {
+                        availableNodes.any { !it.isRussianServer() } ->
+                            settings.setSelectedNodeId(NodeSelection.AUTO_ID)
+                        currentPick == null && availableNodes.any { it.isRussianServer() } ->
+                            settings.setSelectedNodeId(NodeSelection.AUTO_RUSSIA_ID)
+                        // If every available server is Russian and the user
+                        // explicitly picked one, keep that manual selection.
+                    }
                 }
                 connectionManager.connect()
             }
