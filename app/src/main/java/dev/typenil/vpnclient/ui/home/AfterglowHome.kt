@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import dev.typenil.vpnclient.R
 import dev.typenil.vpnclient.core.vpn.VpnConnectionState
+import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.ui.common.disclosureSemantics
 import dev.typenil.vpnclient.ui.common.formatBytes
 import dev.typenil.vpnclient.ui.common.formatRate
@@ -289,7 +290,7 @@ internal fun AfterglowHomeContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = if (ui.autoSelected || ui.selectedNodeName == null) "AUTO" else ui.selectedNodeName!!,
+                        text = if (ui.selectedOptionId == NodeSelection.AUTO_RUSSIA_ID) "AUTORUS" else if (ui.autoSelected || ui.selectedNodeName == null) "AUTO" else ui.selectedNodeName!!,
                         color = Color(0xFF244B86),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -830,13 +831,18 @@ private fun ServerAndRouting(ui: HomeUiState, onPick: () -> Unit, onAdd: () -> U
         else -> null
     }
     // A measured candidate is not necessarily the member used by the session.
+    val autoLabel = if (ui.selectedOptionId == NodeSelection.AUTO_RUSSIA_ID) {
+        stringResource(R.string.afterglow_auto_russia)
+    } else {
+        stringResource(R.string.afterglow_auto)
+    }
     val autoResolved = if (ui.autoSelected) {
         (ui.connection as? VpnConnectionState.Connected)?.node?.name
             ?.substringAfter("→", "")?.trim()?.takeIf { it.isNotBlank() }
     } else null
     val title = when {
         // Auto is a mode, not an error description.
-        ui.autoSelected -> stringResource(R.string.afterglow_auto)
+        ui.autoSelected -> autoLabel
         noServers -> stringResource(R.string.common_add_servers_hint)
         autoResolved != null -> autoResolved
         else -> ui.selectedNodeName ?: live?.name ?: stringResource(R.string.home_no_server_selected)
@@ -857,7 +863,7 @@ private fun ServerAndRouting(ui: HomeUiState, onPick: () -> Unit, onAdd: () -> U
                     Text(stringResource(R.string.afterglow_selected_server), color = colors.muted,
                         fontSize = 11.sp, lineHeight = 12.sp,
                         fontWeight = FontWeight.Bold, letterSpacing = .5.sp)
-                    val modeLabel = if (ui.autoSelected) stringResource(R.string.afterglow_auto) else protocolLabel
+                    val modeLabel = if (ui.autoSelected) autoLabel else protocolLabel
                     if (!noServers && modeLabel != null) Text(modeLabel,
                         color = colors.coral, fontSize = 11.sp, lineHeight = 12.sp,
                         fontWeight = FontWeight.Medium)
