@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -408,7 +409,7 @@ class HomeViewModel
                                         ?.selected
                                         ?.let { tag ->
                                             when {
-                                                tag == NodeSelection.AUTO_ID || tag == NodeSelection.AUTO_RUSSIA_ID || tag == NodeSelection.AUTO_RUSSIA_ID -> null
+                                                tag == NodeSelection.AUTO_ID || tag == NodeSelection.AUTO_RUSSIA_ID -> null
                                                 else -> nodes.firstOrNull { it.id == tag }?.name ?: tag
                                             }
                                         },
@@ -416,7 +417,8 @@ class HomeViewModel
                                     if (
                                         groups
                                             .firstOrNull { it.selectable }
-                                            ?.selected == NodeSelection.AUTO_ID
+                                            ?.selected == NodeSelection.AUTO_ID ||
+                                            groups.firstOrNull { it.selectable }?.selected == NodeSelection.AUTO_RUSSIA_ID
                                     ) {
                                         R.string.common_auto_fastest
                                     } else {
@@ -478,7 +480,10 @@ class HomeViewModel
          */
         fun connect() {
             viewModelScope.launch {
-                settings.setSelectedNodeId(NodeSelection.AUTO_ID)
+                val currentPick = settings.selectedNodeId.first()
+                if (currentPick != NodeSelection.AUTO_ID && currentPick != NodeSelection.AUTO_RUSSIA_ID) {
+                    settings.setSelectedNodeId(NodeSelection.AUTO_ID)
+                }
                 connectionManager.connect()
             }
         }
