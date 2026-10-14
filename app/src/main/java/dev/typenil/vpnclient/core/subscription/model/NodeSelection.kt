@@ -2,16 +2,14 @@ package dev.typenil.vpnclient.core.subscription.model
 
 /**
  * The user's persisted server pick, decoded from `selected_node_id`.
- *
- * Storage stays a single string preference: [Auto] is the [AUTO_ID] sentinel,
- * anything else is a concrete node id. The "auto" spelling matches the
- * sing-box `urltest` group tag (`ConfigCompiler.AUTO_TAG`) so the same value
- * selects the group inside the "proxy" selector — the tag constant stays
- * engine-internal; only the persisted id crosses this boundary.
+ * Automatic modes have dedicated ids that map to separate sing-box urltest groups.
  */
 sealed interface NodeSelection {
-    /** Latency-testing "Auto / Fastest" — routes through the urltest group. */
+    /** Lowest-latency server from non-Russian nodes. */
     data object Auto : NodeSelection
+
+    /** Lowest-latency server from nodes labelled as Russian. */
+    data object AutoRussia : NodeSelection
 
     /** A concrete node by id. */
     data class Node(
@@ -19,19 +17,21 @@ sealed interface NodeSelection {
     ) : NodeSelection
 
     companion object {
-        /** `selected_node_id` value that encodes [Auto]. */
         const val AUTO_ID = "auto"
+        const val AUTO_RUSSIA_ID = "auto-ru"
 
         fun fromId(id: String?): NodeSelection? =
-            when {
-                id == null -> null
-                id == AUTO_ID -> Auto
+            when (id) {
+                null -> null
+                AUTO_ID -> Auto
+                AUTO_RUSSIA_ID -> AutoRussia
                 else -> Node(id)
             }
 
         fun NodeSelection.toId(): String =
             when (this) {
                 Auto -> AUTO_ID
+                AutoRussia -> AUTO_RUSSIA_ID
                 is Node -> id
             }
     }
