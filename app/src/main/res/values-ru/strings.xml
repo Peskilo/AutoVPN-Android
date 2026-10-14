@@ -199,6 +199,7 @@
     <string name="afterglow_online">VPN активен</string>
     <string name="afterglow_permission">Нужен доступ к VPN</string>
     <string name="afterglow_auto">АВТО</string>
+    <string name="afterglow_auto_russia">АВТОРУС 🇷🇺</string>
     <string name="afterglow_status_reconnecting">Переподключение…</string>
     <string name="afterglow_measured_latency">Задержка · %1$d мс</string>
     <string name="home_health_degraded">Подключено, но одна из проверок соединения не прошла</string>
