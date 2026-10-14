@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.typenil.vpnclient.R
 import dev.typenil.vpnclient.core.engine.singbox.NodeTlsSummary
 import dev.typenil.vpnclient.core.subscription.model.NodeSelection
+import dev.typenil.vpnclient.core.subscription.model.isRussianServer
 import dev.typenil.vpnclient.ui.theme.AfterglowTheme
 import dev.typenil.vpnclient.data.LatencyMethod
 import dev.typenil.vpnclient.data.NodeLatency
@@ -261,10 +262,23 @@ fun ServersScreen(
         if (!ui.noSubscriptions) {
             item(key = "auto", span = { GridItemSpan(maxLineSpan) }) {
                 AutoCard(
-                    selected = ui.autoSelected,
+                    selected = ui.selectedNodeId == NodeSelection.AUTO_ID,
                     delayMs = ui.delays[NodeSelection.AUTO_ID],
                     onClick = viewModel::selectAuto,
                 )
+            }
+            val hasRussianServers = ui.groups.any { group ->
+                group.nodes.any { it.entity.toDomain().isRussianServer() }
+            }
+            if (hasRussianServers) {
+                item(key = "auto-russia", span = { GridItemSpan(maxLineSpan) }) {
+                    AutoCard(
+                        selected = ui.selectedNodeId == NodeSelection.AUTO_RUSSIA_ID,
+                        delayMs = ui.delays[NodeSelection.AUTO_RUSSIA_ID],
+                        titleRes = R.string.common_auto_russia,
+                        onClick = viewModel::selectAutoRussia,
+                    )
+                }
             }
         }
 
@@ -492,6 +506,7 @@ private fun sortModeLabel(mode: ServerSortMode): String =
 private fun AutoCard(
     selected: Boolean,
     delayMs: Int?,
+    titleRes: Int = R.string.common_auto_fastest,
     onClick: () -> Unit,
 ) {
     val colors = AfterglowTheme.colors
@@ -508,7 +523,7 @@ private fun AutoCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.common_auto_fastest),
+                text = stringResource(titleRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
