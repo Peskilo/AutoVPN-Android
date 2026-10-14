@@ -198,6 +198,7 @@
     <string name="afterglow_online">VPN active</string>
     <string name="afterglow_permission">VPN PERMISSION</string>
     <string name="afterglow_auto">AUTO</string>
+    <string name="afterglow_auto_russia">AUTORUS 🇷🇺</string>
     <string name="afterglow_status_reconnecting">Reconnecting…</string>
     <string name="afterglow_measured_latency">Latency · %1$d ms</string>
     <string name="home_health_degraded">Connected, but one connection check failed</string>
