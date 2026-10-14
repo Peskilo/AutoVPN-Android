@@ -187,9 +187,8 @@ internal fun ServerPickerSheet(
     onDismiss: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    val auto = options.firstOrNull { it.id == NodeSelection.AUTO_ID }
-    val autoTitle = auto?.titleRes?.let { stringResource(it) }
-    val nodes = options.filter { it.id != NodeSelection.AUTO_ID }
+    val autos = options.filter { it.id == NodeSelection.AUTO_ID || it.id == NodeSelection.AUTO_RUSSIA_ID }
+    val nodes = options.filterNot { it.id == NodeSelection.AUTO_ID || it.id == NodeSelection.AUTO_RUSSIA_ID }
     val trimmed = query.trim()
     val matches =
         if (trimmed.isEmpty()) {
@@ -202,10 +201,12 @@ internal fun ServerPickerSheet(
                     option.title?.contains(trimmed, ignoreCase = true) == true
             }
         }
-    val autoMatches =
+    val matchingAutos = autos.filter { option ->
+        val title = option.titleRes?.let { stringResource(it) }.orEmpty()
         trimmed.isEmpty() ||
-            autoTitle?.contains(trimmed, ignoreCase = true) == true ||
-            auto?.searchText?.contains(trimmed, ignoreCase = true) == true
+            title.contains(trimmed, ignoreCase = true) ||
+            option.searchText?.contains(trimmed, ignoreCase = true) == true
+    }
 
     val colors = AfterglowTheme.colors
     AfterglowSheet(onDismiss = onDismiss) {
@@ -262,16 +263,12 @@ internal fun ServerPickerSheet(
             LazyColumn(Modifier.heightIn(max = listCap)) {
                 // Auto is the picker's first-class choice — shown on an
                 // empty query or when its own label/tag matches the search.
-                if (autoMatches) {
-                    auto?.let { option ->
-                        item(key = option.id) {
-                            PickerRow(
-                                option = option,
-                                selected = option.id == selectedId,
-                                onClick = { onPick(option.id) },
-                            )
-                        }
-                    }
+                items(matchingAutos, key = { it.id }) { option ->
+                    PickerRow(
+                        option = option,
+                        selected = option.id == selectedId,
+                        onClick = { onPick(option.id) },
+                    )
                 }
                 items(matches, key = { it.id }) { option ->
                     PickerRow(
@@ -282,7 +279,7 @@ internal fun ServerPickerSheet(
                 }
                 // A query that hits only the Auto row is still a match —
                 // don't pair the result with a "no match" caption.
-                if (matches.isEmpty() && !(autoMatches && auto != null)) {
+                if (matches.isEmpty() && matchingAutos.isEmpty()) {
                     item(key = "no-match") {
                         Text(
                             text = stringResource(R.string.home_picker_no_match, trimmed),
