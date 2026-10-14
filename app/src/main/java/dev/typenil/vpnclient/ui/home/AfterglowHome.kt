@@ -152,8 +152,12 @@ private fun GokuArtwork(isSuperSaiyan: Boolean, modifier: Modifier = Modifier) {
             Image(
                 bitmap = bitmap!!,
                 contentDescription = if (isSuperSaiyan) "Goku Super Saiyan" else "Goku",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    scaleX = 1.18f
+                    scaleY = 1.18f
+                    translationY = 10.dp.toPx()
+                },
             )
         } else {
             Image(
@@ -215,12 +219,6 @@ internal fun AfterglowHomeContent(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_sayan_mark),
-                    contentDescription = null,
-                    modifier = Modifier.size(42.dp),
-                )
-                Spacer(Modifier.width(10.dp))
                 Text(
                     text = "SAYANVPN",
                     color = Color(0xFF10284F),
@@ -274,7 +272,8 @@ internal fun AfterglowHomeContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(250.dp),
+                        .height(205.dp)
+                        .clip(RoundedCornerShape(2.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     GokuArtwork(
@@ -328,7 +327,7 @@ internal fun AfterglowHomeContent(
                 }
                 Box(
                     modifier = Modifier
-                        .size(116.dp)
+                        .size(144.dp)
                         .shadow(
                             elevation = if (connected) 18.dp else 10.dp,
                             shape = CircleShape,
@@ -353,14 +352,16 @@ internal fun AfterglowHomeContent(
                                 connected -> onDisconnect()
                                 else -> onConnect()
                             }
-                        },
+                        }
+                        // Clip the click indication too: the whole control and its ripple stay circular.
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     // Seven small red stars make the round control read as the
                     // seventh Dragon Ball, while the whole circle remains clickable.
                     Canvas(Modifier.fillMaxSize().padding(13.dp)) {
                         val starColor = Color(0xFFC83220)
-                        val radius = size.minDimension * 0.043f
+                        val radius = size.minDimension * 0.065f
                         val orbit = size.minDimension * 0.34f
                         for (i in 0 until 7) {
                             val angle = Math.toRadians((-90.0 + i * (360.0 / 7.0)))
