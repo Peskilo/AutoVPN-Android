@@ -50,22 +50,22 @@ sealed class DnsUpstream {
 
     data object Cloudflare : DnsUpstream() {
         override val key = "cloudflare"
-        override val serverUrl = "https://1.1.1.1/dns-query"
-        override val hostname = false
+        override val serverUrl = "https://cloudflare-dns.com/dns-query"
+        override val hostname = true
         override val labelResName = "dns_upstream_cloudflare"
     }
 
     data object Google : DnsUpstream() {
         override val key = "google"
-        override val serverUrl = "https://8.8.8.8/dns-query"
-        override val hostname = false
+        override val serverUrl = "https://dns.google/dns-query"
+        override val hostname = true
         override val labelResName = "dns_upstream_google"
     }
 
     data object Quad9 : DnsUpstream() {
         override val key = "quad9"
-        override val serverUrl = "https://9.9.9.9/dns-query"
-        override val hostname = false
+        override val serverUrl = "https://dns.quad9.net/dns-query"
+        override val hostname = true
         override val labelResName = "dns_upstream_quad9"
     }
 
