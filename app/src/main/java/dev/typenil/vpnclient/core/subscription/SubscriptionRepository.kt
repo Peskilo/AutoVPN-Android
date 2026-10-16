@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
@@ -67,6 +68,18 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
  * Lock order — leaves never take subscription locks, so there are no cycles:
  * [lockFor] → [prefsMutex] / [expiryMutex], and [manualMutex] → [prefsMutex].
  */
+/**
+ * Retry transient transport/server failures only. HTTP 429 is intentionally
+ * excluded because providers may require a longer Retry-After interval.
+ */
+internal fun isRetryableSubscriptionFetchError(error: SubscriptionError): Boolean =
+    when (error) {
+        SubscriptionError.Network, SubscriptionError.Timeout -> true
+        is SubscriptionError.Http -> error.code == 408 || error.code == 425 ||
+            error.code in 500..599
+        else -> false
+    }
+
 @Singleton
 class SubscriptionRepository
     @Inject
@@ -483,6 +496,30 @@ class SubscriptionRepository
             )
 
         /**
+         * Retry only failures that may clear up on their own. Invalid links,
+         * auth/device-limit responses, parse failures and rejected configs are
+         * not retried. One short retry helps with flaky mobile networks without
+         * hammering a provider or turning one tap into a long retry storm.
+         */
+        private suspend fun fetchWithRetry(url: String, allowInsecure: Boolean): FetchedSubscription {
+            var retries = 0
+            while (true) {
+                try {
+                    return fetchWithConsent(url, allowInsecure)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: SubscriptionError) {
+                    if (!isRetryableSubscriptionFetchError(e) || retries >= MAX_FETCH_RETRIES) {
+                        throw e
+                    }
+                    retries++
+                    SecureLog.i(TAG, "transient subscription fetch failure; retry=$retries")
+                    delay(FETCH_RETRY_DELAY_MS * retries)
+                }
+            }
+        }
+
+        /**
          * Phase 1: row lookup, gated fetch (fallback once on transport failures),
          * parse and engine validation. No DB writes; ID creation is an atomic
          * consent-guarded DataStore edit.
@@ -501,7 +538,7 @@ class SubscriptionRepository
             var usedFallback = false
             val body =
                 try {
-                    fetchWithConsent(sub.url, sub.allowInsecureHttp)
+                    fetchWithRetry(sub.url, sub.allowInsecureHttp)
                 } catch (e: SubscriptionError) {
                     // Provider-published fallback URL: retry once on transport
                     // failures only — HTTP/parse/policy errors are authoritative.
@@ -511,7 +548,7 @@ class SubscriptionRepository
                     ) {
                         SecureLog.i(TAG, "primary fetch failed sub=$id — trying fallback")
                         usedFallback = true
-                        fetchWithConsent(fallback, sub.allowInsecureHttp)
+                        fetchWithRetry(fallback, sub.allowInsecureHttp)
                     } else {
                         throw e
                     }
@@ -1107,7 +1144,7 @@ class SubscriptionRepository
                             // Same-URL edit is a manual refresh — never gated.
                             return@withLock refreshLocked(id, RefreshTrigger.Manual)
                         }
-                        val body = fetchWithConsent(trimmed, sub.allowInsecureHttp)
+                        val body = fetchWithRetry(trimmed, sub.allowInsecureHttp)
                         val parsed = parseAndValidate(id, body.body, body.contentType)
                         // URL repoint + node swap + success metadata atomically.
                         transactions.run {
@@ -1380,6 +1417,8 @@ class SubscriptionRepository
             fun isManualSubscription(url: String): Boolean = url == MANUAL_SUBSCRIPTION_URL
 
             private const val TAG = "SubscriptionRepository"
+            private const val MAX_FETCH_RETRIES = 1
+            private const val FETCH_RETRY_DELAY_MS = 900L
         }
     }
 
