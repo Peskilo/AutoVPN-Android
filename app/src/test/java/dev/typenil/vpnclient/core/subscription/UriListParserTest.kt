@@ -198,6 +198,18 @@ class UriListParserTest {
     }
 
     @Test
+    fun `unsupported shadowsocks plugin is reported instead of silently ignored`() {
+        val valid = "ss://aes-256-gcm:pw123@ss.example.com:8388#Plain"
+        val pluginNode = "ss://aes-256-gcm:pw123@ss.example.com:8388?plugin=unsupported#Plugin"
+        val result = parser.parse("$valid\n$pluginNode", 1)
+        assertEquals(1, result.nodes.size)
+        assertEquals("Plain", result.nodes.single().name)
+        assertEquals(1, result.skipped.size)
+        assertEquals("Plugin", result.skipped.single().name)
+        assertEquals("unsupported Shadowsocks plugin: unsupported", result.skipped.single().reason)
+    }
+
+    @Test
     fun `ss userinfo base64 form`() {
         val uri = "ss://${b64("aes-256-gcm:pw123")}@ss.example.com:8388#SS-A"
         val n = parser.parse(uri, 1).nodes.single()
