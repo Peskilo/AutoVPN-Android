@@ -130,6 +130,13 @@ class ConfigCompilerTest {
                     it.jsonObject["tag"]!!.jsonPrimitive.content == "remote"
                 }.jsonObject
         assertEquals("proxy", remote["detour"]!!.jsonPrimitive.content)
+        // HTTPS must use the resolver's DNS name so TLS certificate validation
+        // matches the provider certificate; bootstrap that name via local DNS.
+        assertEquals("cloudflare-dns.com", remote["server"]!!.jsonPrimitive.content)
+        assertEquals(
+            "local",
+            remote["domain_resolver"]!!.jsonObject["server"]!!.jsonPrimitive.content,
+        )
     }
 
     @Test
