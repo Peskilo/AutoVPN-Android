@@ -58,7 +58,9 @@ class DnsPolicyTest {
         assertTrue(DnsUpstream.parseCustom("tls://one.one.one.one")!!.hostname)
         assertTrue(DnsUpstream.parseCustom("https://dns.example.com/dns-query")!!.hostname)
         assertFalse(DnsUpstream.parseCustom("tls://1.1.1.1")!!.hostname)
-        assertFalse(DnsUpstream.Cloudflare.hostname)
+        assertTrue(DnsUpstream.Cloudflare.hostname)
+        assertTrue(DnsUpstream.Google.hostname)
+        assertTrue(DnsUpstream.Quad9.hostname)
         assertFalse(DnsUpstream.parseCustom("udp://9.9.9.9")!!.hostname)
     }
 
