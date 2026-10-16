@@ -605,6 +605,7 @@ class SubscriptionRepositoryTest {
         val old = nodeEntity(uri("old.example.com", "Old"), 1)
         nodeDao.nodes[old.id] = old
         server.enqueue(MockResponse().setResponseCode(500))
+        server.enqueue(MockResponse().setResponseCode(500))
 
         val result = repository.refresh(1)
 
@@ -660,9 +661,13 @@ class SubscriptionRepositoryTest {
     private val addUrl get() = server.url("/sub").toString()
 
     /** Runs a first add against [response]; asserts no row, nodes or work remain. */
-    private suspend fun failedAdd(response: MockResponse): SubscriptionError {
+    private suspend fun failedAdd(
+        response: MockResponse,
+        retryResponse: MockResponse? = null,
+    ): SubscriptionError {
         settings.autoRefresh.value = 60 // a leftover row would have been scheduled
         server.enqueue(response)
+        retryResponse?.let(server::enqueue)
         val result = repository.add(addUrl, null, allowInsecureHttp = true)
         assertTrue(result.isFailure)
         assertTrue("row left behind", subscriptionDao.subs.isEmpty())
@@ -676,7 +681,10 @@ class SubscriptionRepositoryTest {
     @Test
     fun `failed add leaves nothing for every http status`() = runTest {
         listOf(403, 404, 429, 500, 503).forEach { code ->
-            val e = failedAdd(MockResponse().setResponseCode(code))
+            val e = failedAdd(
+                MockResponse().setResponseCode(code),
+                retryResponse = if (code in 500..599) MockResponse().setResponseCode(code) else null,
+            )
             assertEquals(code, (e as SubscriptionError.Http).code)
         }
     }
@@ -697,7 +705,12 @@ class SubscriptionRepositoryTest {
 
     @Test
     fun `failed add leaves nothing on network loss and bad bodies`() = runTest {
-        assertTrue(failedAdd(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)) is SubscriptionError.Network)
+        assertTrue(
+            failedAdd(
+                MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START),
+                retryResponse = MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START),
+            ) is SubscriptionError.Network,
+        )
         assertTrue(failedAdd(MockResponse().setBody("not a subscription at all")) !is SubscriptionError.Http)
         assertTrue(failedAdd(MockResponse().setBody("""{"outbounds":[]}""")) is SubscriptionError.EmptyResult)
     }
@@ -919,6 +932,7 @@ class SubscriptionRepositoryTest {
             fallback.start()
             seedSubscription(1, server.url("/sub").toString(), fallback.url("/sub").toString())
             settings.afterHwid = { settings.hwidConsent.value = HwidConsent.Denied }
+            server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
             server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
             fallback.enqueue(MockResponse().setBody(uri("192.0.2.1", "Synthetic")))
             assertTrue(repository.refresh(1).isSuccess)
