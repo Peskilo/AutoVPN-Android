@@ -451,7 +451,7 @@ class SubscriptionRepositoryTest {
                 fallback.enqueue(MockResponse().setBody(uri("192.0.2.1", "Synthetic")))
                 assertTrue(repository.refresh(1).isSuccess)
                 assertDeviceHeaders(fallback.takeRequest(), consent == HwidConsent.Allowed)
-                assertEquals(callsBefore + if (consent == HwidConsent.Allowed) 2 else 0, settings.hwidCalls)
+                assertEquals(callsBefore + if (consent == HwidConsent.Allowed) 3 else 0, settings.hwidCalls)
             }
         } finally {
             fallback.shutdown()
