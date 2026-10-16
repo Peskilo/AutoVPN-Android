@@ -583,10 +583,12 @@ class ConfigCompilerTest {
                 .map { it.jsonObject }
                 .first { it["tag"]!!.jsonPrimitive.content == "remote" }
         assertEquals("https", remote["type"]!!.jsonPrimitive.content)
-        assertEquals("9.9.9.9", remote["server"]!!.jsonPrimitive.content)
+        assertEquals("dns.quad9.net", remote["server"]!!.jsonPrimitive.content)
         assertEquals("/dns-query", remote["path"]!!.jsonPrimitive.content)
-        // Literal-IP upstream needs no bootstrap resolution.
-        assertTrue("domain_resolver" !in remote)
+        assertEquals(
+            "local",
+            remote["domain_resolver"]!!.jsonObject["server"]!!.jsonPrimitive.content,
+        )
     }
 
     @Test
