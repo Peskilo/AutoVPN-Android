@@ -237,11 +237,14 @@ class UriListParser @Inject constructor() : SubscriptionParser {
             val query = ShareLink.parseQuery(rest.substring(q + 1))
             rest = rest.substring(0, q)
             query["plugin"]?.let { raw ->
-                val name = raw.substringBefore(';')
-                if (name == "obfs-local" || name == "v2ray-plugin") {
-                    plugin = name
-                    pluginOpts = raw.substringAfter(';', "").takeIf { it.isNotBlank() }
+                val name = raw.substringBefore(';').trim()
+                if (name != "obfs-local" && name != "v2ray-plugin") {
+                    // Never silently turn a plugin-based Shadowsocks node into
+                    // plain Shadowsocks: it will parse successfully but cannot connect.
+                    throw SkipNode(fragment, "unsupported Shadowsocks plugin: $name")
                 }
+                plugin = name
+                pluginOpts = raw.substringAfter(';', "").takeIf { it.isNotBlank() }
             }
         }
         var authority = rest
