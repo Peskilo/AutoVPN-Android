@@ -954,6 +954,7 @@ class SubscriptionRepositoryTest {
                 fallbackUrl = fallback.url("/sub").toString(),
             )
             server.enqueue(MockResponse().setResponseCode(500))
+            server.enqueue(MockResponse().setResponseCode(500))
 
             assertTrue(repository.refresh(1).isFailure)
             assertEquals(0, fallback.requestCount)
