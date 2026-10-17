@@ -214,7 +214,7 @@ class ConfigCompiler
                             put("type", "urltest")
                             put("tag", AUTO_TAG)
                             putJsonArray("outbounds") { nonRussianNodes.forEach { add(it.id) } }
-                            put("url", "https://www.gstatic.com/generate_204")
+                            put("url", "https://cp.cloudflare.com/generate_204")
                             put("interval", "${URLTEST_INTERVAL_MINUTES}m")
                             put("tolerance", 50)
                             put("idle_timeout", "20m")
@@ -226,7 +226,7 @@ class ConfigCompiler
                             put("type", "urltest")
                             put("tag", AUTO_RUSSIA_TAG)
                             putJsonArray("outbounds") { russianNodes.forEach { add(it.id) } }
-                            put("url", "https://www.gstatic.com/generate_204")
+                            put("url", "https://cp.cloudflare.com/generate_204")
                             put("interval", "${URLTEST_INTERVAL_MINUTES}m")
                             put("tolerance", 50)
                             put("idle_timeout", "20m")
