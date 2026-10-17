@@ -226,3 +226,65 @@ source = source[:start] + replacement_sheet
 source = source.replace("import androidx.compose.ui.text.AnnotatedString\n", "")
 p.write_text(source)
 print("Patched text-field import flow, paste shortcut, and subscription URL handling")
+
+
+# Add explicit Auto and AutoRus selection controls to the home screen.
+screen_path = "presentation/src/main/java/org/librexray/vpn/presentation/screens/VpnScreen.kt"
+p = root / screen_path
+source = p.read_text()
+source = source.replace(
+    "import androidx.compose.material.Box\n" if "import androidx.compose.material.Box\n" in source else "import androidx.compose.material.Icon\n",
+    "import androidx.compose.material.Button\nimport androidx.compose.material.Icon\n" if "import androidx.compose.material.Box\n" not in source else "import androidx.compose.material.Button\nimport androidx.compose.material.Box\n"
+)
+# Put the controls alongside the existing latency test in the bottom section.
+needle = "                ConnectionSpeedInfo(connectionSpeed = connectionSpeed)\n                ConnectionTestButton(onIntent = onIntent, delayMs = delayMs)"
+replacement = """                ConnectionSpeedInfo(connectionSpeed = connectionSpeed)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(modifier = Modifier.weight(1f), onClick = { onIntent(VpnScreenIntent.AutoSelectServer) }) {
+                        Text("Авто")
+                    }
+                    Button(modifier = Modifier.weight(1f), onClick = { onIntent(VpnScreenIntent.AutoRusSelectServer) }) {
+                        Text("Авторус")
+                    }
+                }
+                ConnectionTestButton(onIntent = onIntent, delayMs = delayMs)"""
+if source.count(needle) != 1:
+    raise SystemExit(f"Expected one BottomSection insertion point, found {source.count(needle)}")
+source = source.replace(needle, replacement, 1)
+p.write_text(source)
+
+intent_path = "presentation/src/main/java/org/librexray/vpn/presentation/intent/VpnScreenIntent.kt"
+replace_once(intent_path,
+    "    object TestConnection : VpnScreenIntent\n",
+    "    object TestConnection : VpnScreenIntent\n    object AutoSelectServer : VpnScreenIntent\n    object AutoRusSelectServer : VpnScreenIntent\n")
+
+vm_path = "presentation/src/main/java/org/librexray/vpn/presentation/view_model/VpnScreenViewModel.kt"
+replace_once(vm_path,
+    "            VpnScreenIntent.TestConnection -> testConnection()\n",
+    "            VpnScreenIntent.TestConnection -> testConnection()\n            VpnScreenIntent.AutoSelectServer -> autoSelectServer(false)\n            VpnScreenIntent.AutoRusSelectServer -> autoSelectServer(true)\n")
+replace_once(vm_path,
+    "    /**\n     * Toggle current connection state.",
+    """    /**
+     * Best-effort selection based on imported profile metadata.
+     * AutoRus only selects entries whose display name explicitly indicates Russia.
+     */
+    private fun autoSelectServer(russianOnly: Boolean) {
+        val servers = state.value.serverItemList
+        if (servers.isEmpty()) return
+        val candidates = if (russianOnly) {
+            servers.filter {
+                val label = (it.name + " " + it.ip).lowercase()
+                listOf("russia", "russian", "россия", "россий", "moscow", "москва", "ru-").any(label::contains)
+            }
+        } else servers
+        val selected = candidates.firstOrNull()
+        if (selected != null) setSelectedServer(selected.guid)
+        else _state.update { it.copy(error = VpnScreenError.SelectServerError) }
+    }
+
+    /**
+     * Toggle current connection state.""")
+print("Patched Auto/AutoRus controls and selection intents")
