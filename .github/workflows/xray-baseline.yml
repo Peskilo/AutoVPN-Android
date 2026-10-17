@@ -68,29 +68,32 @@ jobs:
           grep -q 'SayanVPN Xray' core-android/src/main/res/values/strings.xml
           grep -q 'dev.typenil.sayanvpn.xray' app/build.gradle.kts
 
-      - name: Build Xray baseline APKs
+      - name: Build signed debug APKs
         shell: bash
         run: |
           set -euo pipefail
           cd "$LIBREXRAY_DIR"
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Verify and collect APKs
+      - name: Verify and collect signed APKs
         shell: bash
         run: |
           set -euo pipefail
           cd "$LIBREXRAY_DIR"
           mkdir -p "$RUNNER_TEMP/sayanvpn-xray-apks"
-          find app/build/outputs/apk/release -type f -name '*.apk' -size +1M -exec cp {} "$RUNNER_TEMP/sayanvpn-xray-apks/" \;
+          find app/build/outputs/apk/debug -type f -name '*.apk' -size +1M -exec cp {} "$RUNNER_TEMP/sayanvpn-xray-apks/" \;
           test -n "$(find "$RUNNER_TEMP/sayanvpn-xray-apks" -type f -name '*.apk' -print -quit)"
+          for apk in "$RUNNER_TEMP"/sayanvpn-xray-apks/*.apk; do
+            "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner" verify "$apk"
+          done
           sha256sum "$RUNNER_TEMP/sayanvpn-xray-apks"/*.apk > "$RUNNER_TEMP/sayanvpn-xray-apks/SHA256SUMS.txt"
           cat "$RUNNER_TEMP/sayanvpn-xray-apks/SHA256SUMS.txt"
 
-      - name: Upload Xray baseline APKs
+      - name: Upload signed Xray prototype APKs
         uses: actions/upload-artifact@v4
         with:
-          name: sayanvpn-xray-baseline
+          name: sayanvpn-xray-signed
           path: ${{ runner.temp }}/sayanvpn-xray-apks/*
           if-no-files-found: error
           retention-days: 14
