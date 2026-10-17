@@ -34,6 +34,51 @@ jobs:
             --strip-components=1 -C "$RUNNER_TEMP/librexray"
           echo "LIBREXRAY_DIR=$RUNNER_TEMP/librexray" >> "$GITHUB_ENV"
 
+      - name: Fix clipboard subscription URL import in Xray prototype
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("${{ runner.temp }}/librexray/data/src/main/java/org/librexray/vpn/data/repository_impl/ServerConfigImportRepositoryImpl.kt")
+          source = p.read_text()
+          old = """    private fun importBatchConfig(server: String?): ImportResult {
+          return runCatching {
+              val addedDecoded = parseBatchConfig(Utils.decode(server))
+              val added = if (addedDecoded == 0) parseBatchConfig(server) else addedDecoded
+              if (added > 0) ImportResult.Success else ImportResult.Empty
+          }.getOrElse { e ->
+              Utils.error("Failed to import from text", e)
+              ImportResult.Error
+          }
+      }"""
+          new = """    private fun importBatchConfig(server: String?): ImportResult {
+          return runCatching {
+              val raw = server?.trim().orEmpty()
+              // Clipboard may contain a subscription URL rather than a single
+              // vless:// or vmess:// URI. Fetch its body before parsing.
+              val payload = if (raw.startsWith("https://", ignoreCase = true) ||
+                  raw.startsWith("http://", ignoreCase = true)) {
+                  val connection = java.net.URL(raw).openConnection().apply {
+                      connectTimeout = 10000
+                      readTimeout = 15000
+                      setRequestProperty("User-Agent", "SayanVPN")
+                  }
+                  connection.getInputStream().bufferedReader().use { it.readText() }
+              } else raw
+              val addedDecoded = parseBatchConfig(Utils.decode(payload))
+              val added = if (addedDecoded == 0) parseBatchConfig(payload) else addedDecoded
+              if (added > 0) ImportResult.Success else ImportResult.Empty
+          }.getOrElse { e ->
+              Utils.error("Failed to import from text", e)
+              ImportResult.Error
+          }
+      }"""
+          if old not in source:
+              raise SystemExit("Could not find expected importBatchConfig body; refusing unsafe patch")
+          p.write_text(source.replace(old, new, 1))
+          print("Patched clipboard import to support subscription URLs")
+          PY
       - name: Supply pinned Xray AAR and tun2socks binaries
         shell: bash
         run: |
