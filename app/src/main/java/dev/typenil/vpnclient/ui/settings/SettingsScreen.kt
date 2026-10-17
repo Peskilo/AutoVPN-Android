@@ -143,6 +143,12 @@ fun SettingsScreen(
             checked = ui.autoConnectOnLaunch,
             onCheckedChange = viewModel::setAutoConnectOnLaunch,
         )
+        SwitchRow(
+            title = stringResource(R.string.settings_extended_diagnostics),
+            subtitle = stringResource(R.string.settings_extended_diagnostics_sub),
+            checked = ui.extendedDiagnostics,
+            onCheckedChange = viewModel::setExtendedDiagnostics,
+        )
         Row(
             modifier =
                 Modifier

@@ -279,7 +279,18 @@ internal fun AfterglowHomeContent(
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(4.dp))
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.nav_settings),
+                        tint = Color(0xFF17325F),
+                    )
+                }
+                Spacer(Modifier.width(2.dp))
                 Text(
                     text = "+",
                     color = Color(0xFF17325F),

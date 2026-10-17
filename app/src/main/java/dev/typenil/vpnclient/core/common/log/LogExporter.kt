@@ -11,7 +11,10 @@ import javax.inject.Singleton
 
 /** Shares a redacted snapshot through a memory pipe, never a cache file. */
 @Singleton
-class LogExporter @Inject constructor(private val connectionManager: ConnectionManager) {
+class LogExporter @Inject constructor(
+    private val connectionManager: ConnectionManager,
+    private val extendedDiagnostics: ExtendedDiagnosticsRecorder? = null,
+) {
     fun buildShareIntent(context: Context): Intent {
         val core = connectionManager.coreLogSessionSnapshot()
         val text = DiagnosticExport.render(
@@ -21,7 +24,9 @@ class LogExporter @Inject constructor(private val connectionManager: ConnectionM
             if (core.previousSession) context.getString(R.string.diag_core_log_previous) else null,
             connectionManager.healthSnapshot(),
         )
-        val id = DiagnosticProvider.store.publish(text)
+        val history = extendedDiagnostics?.snapshotText().orEmpty()
+        val exportText = if (history.isBlank()) text else text + "\n\nExtended session history (server addresses may be sensitive)\n" + history
+        val id = DiagnosticProvider.store.publish(exportText)
         val uri = Uri.Builder().scheme("content").authority("${context.packageName}.diagnostics").appendPath(id).build()
         return Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

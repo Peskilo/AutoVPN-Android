@@ -2,6 +2,7 @@ package dev.typenil.vpnclient.core.vpn
 
 import android.content.Intent
 import dev.typenil.vpnclient.core.common.log.SecureLog
+import dev.typenil.vpnclient.core.common.log.ExtendedDiagnosticsRecorder
 import dev.typenil.vpnclient.core.engine.ConnectionInfo
 import dev.typenil.vpnclient.core.engine.EngineConfig
 import dev.typenil.vpnclient.core.engine.EngineError
@@ -151,6 +152,7 @@ class ConnectionManager
         private val serviceControl: ServiceControl,
         private val configProvider: NodeConfigProvider,
         private val postStartProbe: PostStartHealthProbe,
+        private val extendedDiagnostics: ExtendedDiagnosticsRecorder? = null,
     ) {
         /** Engine config + session generation handed to the service (too big for extras). */
         class PendingSession(
@@ -1053,7 +1055,11 @@ class ConnectionManager
                         )
                 }
             }
+            val previousNodeId = sessionNode?.id
             sessionNode = summary
+            if (previousNodeId != summary.id) {
+                scope.launch { extendedDiagnostics?.record("SERVER_SELECTED", summary) }
+            }
             when (val current = _state.value) {
                 is VpnConnectionState.Connected -> {
                     publish(current.copy(node = summary))
@@ -1302,6 +1308,7 @@ class ConnectionManager
             pendingSession = null
             teardownRequested = false
             recordRuntimeStarted(generation)
+            scope.launch { extendedDiagnostics?.record("CONNECTED", node) }
             publish(VpnConnectionState.Connected(node, Instant.now(), null))
             // Fresh session — the label below is re-published by the next
             // underlay evaluation; reset so a previous session's transport
@@ -1330,6 +1337,7 @@ class ConnectionManager
             detachEngine()
             pendingSession = null
             clearSessionObservations()
+            scope.launch { extendedDiagnostics?.record("START_FAILED", sessionNode, error.javaClass.simpleName) }
             publish(VpnConnectionState.Error(error, sessionNode), healthGeneration = generation)
         }
 
@@ -1373,6 +1381,7 @@ class ConnectionManager
             val error = pendingTerminalError
             pendingTerminalError = null
             val current = _state.value
+            scope.launch { extendedDiagnostics?.record("DISCONNECTED", sessionNode, error?.javaClass?.simpleName) }
             val next =
                 when {
                     error != null -> VpnConnectionState.Error(error, sessionNode)

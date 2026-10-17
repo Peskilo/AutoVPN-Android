@@ -24,6 +24,7 @@ data class SettingsUiState(
     val reconnectOnNetworkChange: Boolean = true,
     val ipv6Enabled: Boolean = true,
     val dozePowerSave: Boolean = false,
+    val extendedDiagnostics: Boolean = false,
     /** <0 = manual only, 0 = provider-driven, >0 = fixed minutes. */
     val autoRefreshMinutes: Int = 0,
     /** A compiled-in setting changed while a session is alive — the tunnel
@@ -65,11 +66,13 @@ class SettingsViewModel
                     settings.ipv6Enabled,
                     settings.dozePowerSave,
                     settings.autoRefreshMinutes,
-                ) { reconnect, ipv6, doze, refreshMinutes ->
+                    settings.extendedDiagnostics,
+                ) { reconnect, ipv6, doze, refreshMinutes, extendedDiagnostics ->
                     SettingsUiState(
                         reconnectOnNetworkChange = reconnect,
                         ipv6Enabled = ipv6,
                         dozePowerSave = doze,
+                        extendedDiagnostics = extendedDiagnostics,
                         autoRefreshMinutes = refreshMinutes,
                     )
                 },
@@ -157,6 +160,10 @@ class SettingsViewModel
 
         fun setDozePowerSave(enabled: Boolean) {
             viewModelScope.launch { settings.setDozePowerSave(enabled) }
+        }
+
+        fun setExtendedDiagnostics(enabled: Boolean) {
+            viewModelScope.launch { settings.setExtendedDiagnostics(enabled) }
         }
 
         fun setAutoConnectOnLaunch(enabled: Boolean) {
