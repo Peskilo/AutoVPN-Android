@@ -1,0 +1,96 @@
+name: Xray prototype baseline
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-xray-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout SayanVPN repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download pinned LibreXrayVPN source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/librexray"
+          curl -fL --retry 3 \
+            "https://api.github.com/repos/Ko4Learner/LibreXrayVPN/tarball/3c493228efc1ee3ef2d97f1d3dd632193b6266b3" \
+            -o "$RUNNER_TEMP/librexray/source.tar.gz"
+          tar -xzf "$RUNNER_TEMP/librexray/source.tar.gz" \
+            --strip-components=1 -C "$RUNNER_TEMP/librexray"
+          echo "LIBREXRAY_DIR=$RUNNER_TEMP/librexray" >> "$GITHUB_ENV"
+
+      - name: Supply pinned Xray AAR and tun2socks binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LIBREXRAY_DIR"
+          mkdir -p framework/libs
+          curl -fL --retry 3 \
+            "https://github.com/2dust/AndroidLibXrayLite/releases/download/v25.10.15/libv2ray.aar" \
+            -o framework/libs/libv2ray.aar
+          for item in \
+            "arm64-v8a:LibreXrayVPN-v1.0.0-arm64-v8a-release.apk" \
+            "armeabi-v7a:LibreXrayVPN-v1.0.0-armeabi-v7a-release.apk" \
+            "x86:LibreXrayVPN-v1.0.0-x86-release.apk" \
+            "x86_64:LibreXrayVPN-v1.0.0-x86_64-release.apk"; do
+            abi="${item%%:*}"
+            apk="${item#*:}"
+            url="https://github.com/Ko4Learner/LibreXrayVPN/releases/download/v1.0.0/$apk"
+            curl -fL --retry 3 "$url" -o "$RUNNER_TEMP/$apk"
+            mkdir -p "framework/libs/$abi"
+            unzip -p "$RUNNER_TEMP/$apk" "lib/$abi/libtun2socks.so" > "framework/libs/$abi/libtun2socks.so"
+            test -s "framework/libs/$abi/libtun2socks.so"
+          done
+          test -s framework/libs/libv2ray.aar
+
+      - name: Apply SayanVPN prototype branding
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LIBREXRAY_DIR"
+          sed -i 's/<string name="app_name" translatable="false">LibreXrayVPN<\//<string name="app_name" translatable="false">SayanVPN Xray<\//' core-android/src/main/res/values/strings.xml
+          sed -i 's/applicationId = "org.librexray.vpn"/applicationId = "dev.typenil.sayanvpn.xray"/' app/build.gradle.kts
+          grep -q 'SayanVPN Xray' core-android/src/main/res/values/strings.xml
+          grep -q 'dev.typenil.sayanvpn.xray' app/build.gradle.kts
+
+      - name: Build Xray baseline APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LIBREXRAY_DIR"
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Verify and collect APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$LIBREXRAY_DIR"
+          mkdir -p "$RUNNER_TEMP/sayanvpn-xray-apks"
+          find app/build/outputs/apk/release -type f -name '*.apk' -size +1M -exec cp {} "$RUNNER_TEMP/sayanvpn-xray-apks/" \;
+          test -n "$(find "$RUNNER_TEMP/sayanvpn-xray-apks" -type f -name '*.apk' -print -quit)"
+          sha256sum "$RUNNER_TEMP/sayanvpn-xray-apks"/*.apk > "$RUNNER_TEMP/sayanvpn-xray-apks/SHA256SUMS.txt"
+          cat "$RUNNER_TEMP/sayanvpn-xray-apks/SHA256SUMS.txt"
+
+      - name: Upload Xray baseline APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayanvpn-xray-baseline
+          path: ${{ runner.temp }}/sayanvpn-xray-apks/*
+          if-no-files-found: error
+          retention-days: 14
