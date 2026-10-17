@@ -338,6 +338,8 @@
     <string name="settings_doze_sub">Приостанавливать ядро при простое устройства — разрывает открытые соединения</string>
     <string name="settings_connect_on_launch">Подключаться при запуске</string>
     <string name="settings_connect_on_launch_sub">Запускать VPN при открытии приложения</string>
+    <string name="settings_extended_diagnostics">Расширенная диагностика</string>
+    <string name="settings_extended_diagnostics_sub">Сохранять локальную историю сессий, серверов, протоколов и ошибок. Автоматической отправки нет.</string>
     <string name="settings_theme">Тема</string>
     <string name="settings_language">Язык</string>
     <string name="settings_dynamic_color">Динамические цвета</string>
