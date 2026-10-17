@@ -55,6 +55,7 @@ class ConfigCompilerTest {
 
         val urltest = outbounds[1].jsonObject
         assertEquals("auto", urltest["tag"]!!.jsonPrimitive.content)
+        assertEquals("https://cp.cloudflare.com/generate_204", urltest["url"]!!.jsonPrimitive.content)
         assertEquals(2, urltest["outbounds"]!!.jsonArray.size)
         // Stops background probing when the group carries no traffic.
         assertEquals("20m", urltest["idle_timeout"]!!.jsonPrimitive.content)
