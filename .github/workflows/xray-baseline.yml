@@ -39,10 +39,10 @@ jobs:
         run: |
           set -euo pipefail
           cd "$LIBREXRAY_DIR"
-          mkdir -p framework/libs
+          mkdir -p libs framework/libs
           curl -fL --retry 3 \
             "https://github.com/2dust/AndroidLibXrayLite/releases/download/v25.10.15/libv2ray.aar" \
-            -o framework/libs/libv2ray.aar
+            -o libs/libv2ray.aar
           for item in \
             "arm64-v8a:LibreXrayVPN-v1.0.0-arm64-v8a-release.apk" \
             "armeabi-v7a:LibreXrayVPN-v1.0.0-armeabi-v7a-release.apk" \
@@ -56,7 +56,7 @@ jobs:
             unzip -p "$RUNNER_TEMP/$apk" "lib/$abi/libtun2socks.so" > "framework/libs/$abi/libtun2socks.so"
             test -s "framework/libs/$abi/libtun2socks.so"
           done
-          test -s framework/libs/libv2ray.aar
+          test -s libs/libv2ray.aar
 
       - name: Apply SayanVPN prototype branding
         shell: bash
