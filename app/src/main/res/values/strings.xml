@@ -333,6 +333,8 @@
     <string name="settings_doze_sub">Pause the core when the device idles — drops open connections</string>
     <string name="settings_connect_on_launch">Connect on launch</string>
     <string name="settings_connect_on_launch_sub">Start the VPN when the app opens</string>
+    <string name="settings_extended_diagnostics">Extended diagnostics</string>
+    <string name="settings_extended_diagnostics_sub">Keep a local history of VPN sessions, server, protocol and connection errors. Nothing is uploaded automatically.</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_language">Language</string>
     <string name="settings_dynamic_color">Dynamic color</string>
