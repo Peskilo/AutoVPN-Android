@@ -103,3 +103,5 @@ jobs:
           path: ${{ runner.temp }}/sayanvpn-xray-apks/*
           if-no-files-found: error
           retention-days: 14
+
+# Rebuild after adding Auto/AutoRus controls and selection intents.
