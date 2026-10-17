@@ -68,6 +68,8 @@ class SettingsRepository
 
             /** Opt-in: pause the core in Doze (drops open TCP connections). */
             val DOZE_POWER_SAVE = booleanPreferencesKey("doze_power_save")
+            /** Opt-in local session history; never uploads automatically. */
+            val EXTENDED_DIAGNOSTICS = booleanPreferencesKey("extended_diagnostics")
             val BATTERY_HINT_DISMISSED = booleanPreferencesKey("battery_hint_dismissed")
 
             /** First-run screens completed (or grandfathered on update). */
@@ -310,6 +312,15 @@ class SettingsRepository
 
         suspend fun setDozePowerSave(enabled: Boolean) {
             context.settingsStore.edit { it[Keys.DOZE_POWER_SAVE] = enabled }
+        }
+
+        val extendedDiagnostics: Flow<Boolean> =
+            context.settingsStore.data
+                .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+                .map { it[Keys.EXTENDED_DIAGNOSTICS] ?: false }
+
+        suspend fun setExtendedDiagnostics(enabled: Boolean) {
+            context.settingsStore.edit { it[Keys.EXTENDED_DIAGNOSTICS] = enabled }
         }
 
         /** Read errors remain unknown: never re-show a dismissed hint on I/O failure. */
