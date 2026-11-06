@@ -2,6 +2,12 @@ package dev.typenil.vpnclient.data
 
 import dev.typenil.vpnclient.data.db.NodeLatencyDao
 import dev.typenil.vpnclient.data.db.NodeLatencyEntity
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +43,81 @@ data class NodeLatency(
 ) {
     /** A timestamp in the future (clock moved back) can't be trusted: stale. */
     fun isFresh(nowMs: Long): Boolean = nowMs - checkedAtMs in 0..LATENCY_TTL_MS
+}
+
+/**
+ * Maximum time the first Auto connect may spend seeding fallback order with
+ * direct TCP evidence. Partial results are useful; uncompleted probes remain
+ * unknown rather than being recorded as failures.
+ */
+internal const val AUTO_FALLBACK_PREFLIGHT_BUDGET_MS = 5_000L
+
+/**
+ * Bounded first-connect preflight for Auto mode.
+ *
+ * sing-box starts URLTest with the first candidate before it has any proxy
+ * history. When there is no fresh effective success, probe candidates that
+ * have no fresh verdict yet and return only terminal results. TCP is a
+ * reachability hint, not proof of a working proxy, so callers may use these
+ * results to order candidates but must never remove candidates from the group.
+ *
+ * A fresh Proxy failure remains stronger than TCP success and is not
+ * overwritten by this underlay-only check. A fresh successful Proxy verdict,
+ * or a TCP success without a fresh Proxy verdict, avoids the extra delay.
+ */
+internal suspend fun <T> probeUnknownAutoFallbackCandidates(
+    candidates: List<T>,
+    idOf: (T) -> String,
+    hostOf: (T) -> String,
+    portOf: (T) -> Int,
+    verdicts: Map<String, Map<LatencyMethod, NodeLatency>>,
+    nowMs: Long,
+    budgetMs: Long = AUTO_FALLBACK_PREFLIGHT_BUDGET_MS,
+    probe: suspend (String, Int) -> Int?,
+): Map<String, Int?> {
+    require(budgetMs > 0) { "preflight budget must be positive" }
+
+    val freshById = candidates.associate { candidate ->
+        val byMethod = verdicts[idOf(candidate)].orEmpty()
+        val proxy = byMethod[LatencyMethod.Proxy]?.takeIf { it.isFresh(nowMs) }
+        val tcp = byMethod[LatencyMethod.Tcp]?.takeIf { it.isFresh(nowMs) }
+        idOf(candidate) to (proxy to tcp)
+    }
+
+    val hasFreshSuccess = freshById.values.any { (proxy, tcp) ->
+        proxy?.latencyMs != null || (proxy == null && tcp?.latencyMs != null)
+    }
+    if (hasFreshSuccess) return emptyMap()
+
+    val pending = candidates.filter { candidate ->
+        val (proxy, tcp) = freshById.getValue(idOf(candidate))
+        proxy == null && tcp == null
+    }
+    if (pending.isEmpty()) return emptyMap()
+
+    val completed = ConcurrentHashMap.newKeySet<String>()
+    val successful = ConcurrentHashMap<String, Int>()
+
+    withTimeoutOrNull(budgetMs) {
+        coroutineScope {
+            pending.map { candidate ->
+                async {
+                    val id = idOf(candidate)
+                    val result = try {
+                        probe(hostOf(candidate), portOf(candidate))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (result != null) successful[id] = result
+                    completed.add(id)
+                }
+            }.awaitAll()
+        }
+    }
+
+    return completed.associateWith { successful[it] }
 }
 
 /**
