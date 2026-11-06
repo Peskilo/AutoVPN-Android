@@ -35,6 +35,42 @@ data class NodeLatency(
 }
 
 /**
+ * Orders candidates only for sing-box's initial urltest fallback.
+ *
+ * sing-box selects the first network-compatible outbound when it has no
+ * successful URL-test history yet. Put recent end-to-end Proxy successes
+ * first, then recent TCP-connect successes, then unknown/stale nodes, and
+ * finally nodes whose latest fresh probe failed. Once urltest has history,
+ * sing-box's own latency+tolerance selection takes over.
+ *
+ * TCP is deliberately weaker evidence than Proxy: it proves only that the
+ * server port accepted a connection, not that the proxy protocol works.
+ */
+internal fun <T> orderAutoFallbackCandidates(
+    candidates: List<T>,
+    idOf: (T) -> String,
+    latencies: Map<String, NodeLatency>,
+    nowMs: Long,
+): List<T> =
+    candidates.withIndex()
+        .sortedWith(
+            compareBy<IndexedValue<T>> { indexed ->
+                val verdict = latencies[idOf(indexed.value)]
+                when {
+                    verdict == null || !verdict.isFresh(nowMs) -> 2
+                    verdict.latencyMs != null && verdict.method == LatencyMethod.Proxy -> 0
+                    verdict.latencyMs != null && verdict.method == LatencyMethod.Tcp -> 1
+                    else -> 3
+                }
+            }.thenBy { indexed ->
+                val verdict = latencies[idOf(indexed.value)]
+                if (verdict?.isFresh(nowMs) == true) verdict.latencyMs ?: Int.MAX_VALUE
+                else Int.MAX_VALUE
+            }.thenBy { it.index },
+        )
+        .map { it.value }
+
+/**
  * Persisted per-node latency verdicts. Stored values are history — callers
  * must show them with [NodeLatency.checkedAtMs] and the method, never as a
  * live reading.
