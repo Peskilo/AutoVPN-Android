@@ -32,9 +32,38 @@ class NodeLatencyDaoTest {
     private fun node(id: String) =
         NodeEntity(id, 1L, id, "VLESS", "127.0.0.1", 443, "{}", null, 0)
 
-    private fun visible() = runBlocking { db.nodeLatencyDao().observeLive().first().map { it.nodeId }.sorted() }
+    private fun visible() = runBlocking { db.nodeLatencyDao().observeLive().first().map { it.nodeId }.distinct().sorted() }
 
     private fun row(id: String) = NodeLatencyEntity(id, 10, 1L, "tcp")
+
+    @Test
+    fun tcpAndProxyRowsCoexistForOneNode() =
+        runBlocking {
+            db.nodeDao().upsertAll(listOf(node("a")))
+            db.nodeLatencyDao().record(
+                listOf(
+                    NodeLatencyEntity("a\u001Ftcp", 40, 1L, "tcp"),
+                    NodeLatencyEntity("a\u001Fproxy", 90, 2L, "proxy"),
+                ),
+            )
+
+            val rows = db.nodeLatencyDao().observeLive().first()
+            assertEquals(setOf("tcp", "proxy"), rows.map { it.method }.toSet())
+            assertEquals(setOf("a"), rows.map { it.nodeId }.toSet())
+        }
+
+    @Test
+    fun firstMethodSpecificWriteReplacesItsLegacyV8Row() =
+        runBlocking {
+            db.nodeDao().upsertAll(listOf(node("a")))
+            db.nodeLatencyDao().record(listOf(NodeLatencyEntity("a", 10, 1L, "tcp")))
+            db.nodeLatencyDao().record(listOf(NodeLatencyEntity("a\u001Ftcp", 20, 2L, "tcp")))
+
+            val rows = db.nodeLatencyDao().observeLive().first()
+            assertEquals(1, rows.size)
+            assertEquals("tcp", rows.single().method)
+            assertEquals(20, rows.single().latencyMs)
+        }
 
     @Test
     fun resultsSurviveRefreshOfUnchangedNodesAndDieWithRemovedOnes() =

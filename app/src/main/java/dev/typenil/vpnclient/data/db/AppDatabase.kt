@@ -360,9 +360,11 @@ abstract class NodeDao {
  * Last latency verdict per node, stored apart from `nodes` for the same
  * reason as [NodePreferenceEntity]: the node table is rewritten wholesale on
  * every refresh, so an FK `ON DELETE CASCADE` would wipe every result on each
- * refresh — even for nodes whose id is unchanged. Rows are keyed by node id
- * with no FK; [NodeLatencyDao.observeLive] only ever returns rows whose node
- * still exists and [NodeLatencyDao.record] sweeps the rest.
+ * refresh — even for nodes whose id is unchanged. The v8 schema's nodeId
+ * primary key stores a logical (node id, method) key separated by U+001F;
+ * old rows containing only a node id remain readable. There is no FK;
+ * [NodeLatencyDao.observeLive] projects the original node id and only returns
+ * rows whose node still exists, while [NodeLatencyDao.record] sweeps orphans.
  */
 @Entity(tableName = "node_latency")
 data class NodeLatencyEntity(
@@ -378,21 +380,45 @@ data class NodeLatencyEntity(
 abstract class NodeLatencyDao {
     /** Inner join: results of vanished nodes are invisible even before swept. */
     @Query(
-        """SELECT l.* FROM node_latency l
-            INNER JOIN nodes n ON n.id = l.nodeId""",
+        """SELECT
+            CASE WHEN instr(l.nodeId, char(31)) > 0
+                 THEN substr(l.nodeId, 1, instr(l.nodeId, char(31)) - 1)
+                 ELSE l.nodeId END AS nodeId,
+            l.latencyMs, l.checkedAtEpochMs, l.method
+            FROM node_latency l
+            INNER JOIN nodes n ON n.id =
+                CASE WHEN instr(l.nodeId, char(31)) > 0
+                     THEN substr(l.nodeId, 1, instr(l.nodeId, char(31)) - 1)
+                     ELSE l.nodeId END""",
     )
     abstract fun observeLive(): Flow<List<NodeLatencyEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertAll(rows: List<NodeLatencyEntity>)
 
-    @Query("DELETE FROM node_latency WHERE nodeId NOT IN (SELECT id FROM nodes)")
+    /** Remove a legacy v8 row for the same method before writing its keyed replacement. */
+    @Query("DELETE FROM node_latency WHERE nodeId = :nodeId AND method = :method")
+    abstract suspend fun deleteLegacy(nodeId: String, method: String)
+
+    @Query(
+        """DELETE FROM node_latency
+            WHERE (CASE WHEN instr(nodeId, char(31)) > 0
+                        THEN substr(nodeId, 1, instr(nodeId, char(31)) - 1)
+                        ELSE nodeId END)
+            NOT IN (SELECT id FROM nodes)""",
+    )
     abstract suspend fun deleteOrphans()
 
     /** Write + sweep as one transaction: a result for a node that no longer
      *  exists (refresh raced the probe) never lingers. */
     @Transaction
     open suspend fun record(rows: List<NodeLatencyEntity>) {
+        // A v8 row used the bare node id as its primary key. On the first
+        // write of a method after upgrade, replace that legacy row instead
+        // of leaving two logical verdicts for the same method.
+        for (row in rows) {
+            deleteLegacy(row.nodeId.substringBefore('\u001F'), row.method)
+        }
         upsertAll(rows)
         deleteOrphans()
     }

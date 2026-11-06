@@ -1,0 +1,210 @@
+name: Build sing-box libbox AAR
+
+run-name: libbox v1.14.1 source build · ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - revival/arm64-build-2026-11-05
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: libbox-source-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-libbox:
+    name: Build official v1.14.1 libbox for Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out AutoVPN
+        uses: actions/checkout@v4
+
+      - name: Check out pinned sing-box source
+        uses: actions/checkout@v4
+        with:
+          repository: SagerNet/sing-box
+          ref: 1ac1a339cb1223e9c70eae14c44411c75033c02d
+          path: sing-box-src
+          persist-credentials: false
+
+      - name: Set up Go 1.25.5
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Install pinned Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;28.0.13004108"
+          test -f "$ANDROID_HOME/licenses/android-sdk-license"
+          test -f "$ANDROID_HOME/ndk/28.0.13004108/source.properties"
+
+      - name: Install the sing-box gomobile toolchain
+        working-directory: sing-box-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          make lib_install
+          "$(go env GOPATH)/bin/gomobile" init
+          "$(go env GOPATH)/bin/gomobile" version
+          java --version
+          go version
+
+      - name: Build libbox AARs from the pinned source
+        working-directory: sing-box-src
+        run: make lib_android
+
+      - name: Verify AARs and record checksums
+        working-directory: sing-box-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s libbox.aar
+          test -s libbox-legacy.aar
+          mkdir -p ../build/libbox
+          cp libbox.aar libbox-legacy.aar ../build/libbox/
+          cd ../build/libbox
+          for aar in libbox.aar libbox-legacy.aar; do
+            echo "=== $aar ==="
+            unzip -t "$aar"
+            unzip -Z1 "$aar" | awk -F/ '$1 == "jni" && $2 != "" { print $2 }' | sort -u
+            sha256sum "$aar"
+          done
+          unzip -Z1 libbox.aar | awk -F/ '$1 == "jni" && $2 != "" { print $2 }' | sort -u > libbox-abis.txt
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            grep -Fxq "$abi" libbox-abis.txt
+          done
+          sha256sum libbox.aar libbox-legacy.aar > SHA256SUMS.txt
+          {
+            echo "sing-box tag: v1.14.1"
+            echo "sing-box commit: 1ac1a339cb1223e9c70eae14c44411c75033c02d"
+            echo "Go: $(go version)"
+            echo "Java: $(java --version 2>&1 | head -n 1)"
+            echo "Android NDK: 28.0.13004108"
+            echo
+            cat SHA256SUMS.txt
+          } > BUILD-METADATA.txt
+
+      - name: Upload source-built libbox artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbox-v1.14.1-source-built
+          path: |
+            build/libbox/libbox.aar
+            build/libbox/libbox-legacy.aar
+            build/libbox/SHA256SUMS.txt
+            build/libbox/BUILD-METADATA.txt
+            build/libbox/libbox-abis.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  build-apks:
+    name: Test and package APKs with source-built libbox
+    needs: build-libbox
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Check out AutoVPN
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Download source-built libbox from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: libbox-v1.14.1-source-built
+          path: build/libbox
+
+      - name: Verify and stage source-built libbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd build/libbox
+            sha256sum -c SHA256SUMS.txt
+            grep -Fxq "arm64-v8a" libbox-abis.txt
+            grep -Fxq "armeabi-v7a" libbox-abis.txt
+            grep -Fxq "x86" libbox-abis.txt
+            grep -Fxq "x86_64" libbox-abis.txt
+          )
+          mkdir -p core-native
+          install -m 0644 build/libbox/libbox.aar core-native/libbox-1.14.1.aar
+          test -s core-native/libbox-1.14.1.aar
+          echo "SOURCE_LIBBOX_SHA256=b97d8a17629fc2f1909427bf419d98a8797fab04465584608d7610ad8f65e075" >> "$GITHUB_ENV"
+
+      - name: Run unit tests with source-built libbox
+        run: ./gradlew test -PautovpnLibboxSha256="$SOURCE_LIBBOX_SHA256" --stacktrace
+
+      - name: Run Android lint with source-built libbox
+        run: ./gradlew lint -PautovpnLibboxSha256="$SOURCE_LIBBOX_SHA256" --stacktrace
+
+      - name: Build all ABI-specific debug APKs with source-built libbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="app/build/outputs/sayanvpn-debug-apks"
+          mkdir -p "$out"
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            rm -f app/build/outputs/apk/debug/app-debug.apk
+            ./gradlew assembleDebug -PautovpnAbi="$abi" -PautovpnLibboxSha256="$SOURCE_LIBBOX_SHA256" --stacktrace
+            cp app/build/outputs/apk/debug/app-debug.apk "$out/app-$abi-debug.apk"
+          done
+
+      - name: Verify APKs and write SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_dir="app/build/outputs/sayanvpn-debug-apks"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -x "$build_tools/apksigner"
+          shopt -s nullglob
+          apks=("$apk_dir"/*.apk)
+          test "${#apks[@]}" -eq 4
+          for apk in "${apks[@]}"; do
+            test -s "$apk"
+            "$build_tools/apksigner" verify --verbose "$apk"
+            size="$(stat -c%s "$apk")"
+            echo "$apk: $size bytes"
+            if (( size > 150 * 1024 * 1024 )); then
+              echo "::error file=$apk::APK unexpectedly exceeds 150 MiB; ABI filtering failed"
+              exit 1
+            fi
+            name="$(basename "$apk")"
+            (cd "$apk_dir" && sha256sum "$name" > "$name.sha256")
+          done
+
+      - name: Upload APKs built with source-built libbox
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayanvpn-debug-source-libbox-v1.14.1
+          path: app/build/outputs/sayanvpn-debug-apks/*
+          if-no-files-found: error
+          retention-days: 14

@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.typenil.vpnclient.core.engine.EngineConfig
 import dev.typenil.vpnclient.core.engine.singbox.ConfigCompiler
 import dev.typenil.vpnclient.core.engine.singbox.RuleSetStore
+import dev.typenil.vpnclient.core.common.LatencyProbe
 import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.core.subscription.model.NodeSummary
 import dev.typenil.vpnclient.core.subscription.model.ProtocolType
@@ -40,6 +41,8 @@ class NodeConfigProviderImpl
         private val settings: SettingsRepository,
         private val compiler: ConfigCompiler,
         private val ruleSetStore: RuleSetStore,
+        private val latencyRepository: NodeLatencyRepository,
+        private val latencyProbe: LatencyProbe,
         private val routingRuleDao: dev.typenil.vpnclient.data.db.RoutingRuleDao,
     ) : NodeConfigProvider {
         override val selectedNodeId: Flow<String?> = settings.selectedNodeId
@@ -153,15 +156,49 @@ class NodeConfigProviderImpl
             // lands here, and a still-stale id keeps failing loudly.
             val pick = settings.selectedNodeId.first()
             val routeMode = settings.routeMode.first()
+            val autoSelected = pick == NodeSelection.AUTO_ID || pick == NodeSelection.AUTO_RUSSIA_ID
+            // sing-box falls back to the first urltest candidate before it
+            // has successful measurements. Keep using persisted evidence when
+            // available; on a first run, seed the empty history with a bounded
+            // direct TCP preflight. TCP only orders candidates — it never
+            // removes one or claims that the proxy handshake works. Manual
+            // selections are unchanged.
+            val compileNodes =
+                if (autoSelected) {
+                    val existingVerdicts = latencyRepository.verdicts.first()
+                    val preflightCandidates = autoFallbackProbeCandidates(nodes, pick)
+                    val preflight = probeUnknownAutoFallbackCandidates(
+                        candidates = preflightCandidates,
+                        idOf = { it.id },
+                        hostOf = { it.server },
+                        portOf = { it.port },
+                        verdicts = existingVerdicts,
+                        nowMs = latencyRepository.now(),
+                        probe = { host, port -> latencyProbe.measure(host, port) },
+                    )
+                    if (preflight.isNotEmpty()) {
+                        latencyRepository.record(preflight, LatencyMethod.Tcp)
+                    }
+                    val currentVerdicts =
+                        if (preflight.isEmpty()) existingVerdicts else latencyRepository.verdicts.first()
+                    orderAutoFallbackCandidates(
+                        candidates = nodes,
+                        idOf = { it.id },
+                        verdicts = currentVerdicts,
+                        nowMs = latencyRepository.now(),
+                    )
+                } else {
+                    nodes
+                }
             val compiled =
                 compiler.compile(
-                    nodes = nodes,
+                    nodes = compileNodes,
                     selectedNodeId = pick,
                     ipv6Enabled = settings.ipv6Enabled.first(),
                     routeMode = routeMode,
                     underlayIpv6 = resolveUnderlayIpv6(),
                     ruleSetPaths = ruleSetStore.ensureReady(routeMode),
-                    selectAuto = pick == NodeSelection.AUTO_ID || pick == NodeSelection.AUTO_RUSSIA_ID,
+                    selectAuto = autoSelected,
                     bypassLan = settings.bypassLan.first(),
                     dnsProfile = settings.dnsProfile.first(),
                     userRules = userRoutingRules(),
@@ -278,3 +315,21 @@ internal fun nodeSetFingerprint(entities: List<NodeEntity>): String {
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
+
+/**
+ * Candidates that can actually enter the selected Auto URLTest group.
+ * Probe only this subset: testing the opposite region first could consume the
+ * entire preflight budget before the selected group receives any evidence.
+ */
+internal fun autoFallbackProbeCandidates(
+    nodes: List<ProxyNode>,
+    selectedNodeId: String,
+): List<ProxyNode> {
+    val allowed = nodes.filter(::isTunnelAllowed)
+    return when (selectedNodeId) {
+        NodeSelection.AUTO_ID -> allowed.filterNot(ProxyNode::isRussianServer)
+        NodeSelection.AUTO_RUSSIA_ID -> allowed.filter(ProxyNode::isRussianServer)
+        else -> emptyList()
+    }
+}
+
