@@ -30,16 +30,17 @@ class NodeLatencyRepositoryTest {
 
     @Test
     fun `auto fallback ignores stale and future measurements`() {
+        val nowMs = LATENCY_TTL_MS + 10_000L
         val nodes = listOf("stale", "fresh", "future")
         val verdicts = mapOf(
-            "stale" to NodeLatency(5, 1L, LatencyMethod.Proxy),
-            "fresh" to NodeLatency(120, 900L, LatencyMethod.Tcp),
-            "future" to NodeLatency(1, 2_000L, LatencyMethod.Proxy),
+            "stale" to NodeLatency(5, 1_000L, LatencyMethod.Proxy),
+            "fresh" to NodeLatency(120, nowMs - 1_000L, LatencyMethod.Tcp),
+            "future" to NodeLatency(1, nowMs + 1_000L, LatencyMethod.Proxy),
         )
 
         assertEquals(
             listOf("fresh", "stale", "future"),
-            orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
+            orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = nowMs),
         )
     }
 
