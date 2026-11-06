@@ -84,7 +84,12 @@ ksp {
 
 // libbox AAR is fetched from the singbox-android/libbox GitHub release and
 // verified against the pinned SHA-256 (see docs/adr/ADR-0001-vpn-core.md).
-val libboxSha256 = "93b2596c4e90df32463a9ade5c89d85f83a16aacd94928ba26fc4bce41eaf2a9"
+// Local builds retain the official release checksum. The source-build CI job
+// supplies its independently verified checksum when staging the freshly built AAR.
+val officialLibboxSha256 = "93b2596c4e90df32463a9ade5c89d85f83a16aacd94928ba26fc4bce41eaf2a9"
+val libboxSha256 = providers.gradleProperty("autovpnLibboxSha256")
+    .orElse(officialLibboxSha256)
+    .get()
 val libboxFile = rootProject.file("core-native/libbox-$vpnCoreVersion.aar")
 
 val downloadLibbox by tasks.registering {
