@@ -14,6 +14,50 @@ class NodeLatencyRepositoryTest {
     private val repo = NodeLatencyRepository(dao) { clock }
 
     @Test
+    fun `auto fallback prefers fresh proxy successes over tcp successes`() {
+        val nodes = listOf("timeout", "tcp-fast", "proxy-slower", "unknown")
+        val verdicts = mapOf(
+            "timeout" to NodeLatency(null, 1_000L, LatencyMethod.Tcp),
+            "tcp-fast" to NodeLatency(80, 1_000L, LatencyMethod.Tcp),
+            "proxy-slower" to NodeLatency(190, 1_000L, LatencyMethod.Proxy),
+        )
+
+        assertEquals(
+            listOf("proxy-slower", "tcp-fast", "unknown", "timeout"),
+            orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
+        )
+    }
+
+    @Test
+    fun `auto fallback ignores stale and future measurements`() {
+        val nodes = listOf("stale", "fresh", "future")
+        val verdicts = mapOf(
+            "stale" to NodeLatency(5, 1L, LatencyMethod.Proxy),
+            "fresh" to NodeLatency(120, 900L, LatencyMethod.Tcp),
+            "future" to NodeLatency(1, 2_000L, LatencyMethod.Proxy),
+        )
+
+        assertEquals(
+            listOf("fresh", "stale", "future"),
+            orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
+        )
+    }
+
+    @Test
+    fun `auto fallback keeps original order when evidence is equally weak`() {
+        val nodes = listOf("first", "second")
+        val verdicts = mapOf(
+            "first" to NodeLatency(null, 1_000L, LatencyMethod.Proxy),
+            "second" to NodeLatency(null, 1_000L, LatencyMethod.Tcp),
+        )
+
+        assertEquals(
+            listOf("first", "second"),
+            orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
+        )
+    }
+
+    @Test
     fun `verdicts carry method and the batch timestamp, failures stay null`() =
         runTest {
             repo.record(mapOf("a" to 42, "b" to null), LatencyMethod.Tcp)
