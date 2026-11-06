@@ -32,11 +32,10 @@ internal const val LATENCY_STORAGE_SEPARATOR = "\u001F"
 internal fun latencyStorageKey(nodeId: String, method: LatencyMethod): String =
     "$nodeId$LATENCY_STORAGE_SEPARATOR${method.storage}"
 
-/** How long a stored verdict still counts as current for ordering. */
-/** Successful measurements remain useful longer than a one-off failure. */
-const val LATENCY_TTL_MS = 24L * 60 * 60 * 1000
+/** A positive measurement is only a short-lived hint for initial ordering. */
+const val LATENCY_TTL_MS = 15L * 60 * 1000
 
-/** A transient timeout must not deprioritize a recovered node for an entire day. */
+/** A transient failure should deprioritize a recovered node for only five minutes. */
 const val LATENCY_FAILURE_TTL_MS = 5L * 60 * 1000
 
 /** A persisted verdict. [latencyMs] null = the probe ran and failed. */
