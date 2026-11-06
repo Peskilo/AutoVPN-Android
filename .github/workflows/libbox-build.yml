@@ -118,3 +118,93 @@ jobs:
             build/libbox/libbox-abis.txt
           if-no-files-found: error
           retention-days: 14
+
+  build-apks:
+    name: Test and package APKs with source-built libbox
+    needs: build-libbox
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Check out AutoVPN
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Download source-built libbox from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: libbox-v1.14.1-source-built
+          path: build/libbox
+
+      - name: Verify and stage source-built libbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd build/libbox
+            sha256sum -c SHA256SUMS.txt
+            grep -Fxq "arm64-v8a" libbox-abis.txt
+            grep -Fxq "armeabi-v7a" libbox-abis.txt
+            grep -Fxq "x86" libbox-abis.txt
+            grep -Fxq "x86_64" libbox-abis.txt
+          )
+          mkdir -p core-native
+          install -m 0644 build/libbox/libbox.aar core-native/libbox-1.14.1.aar
+          test -s core-native/libbox-1.14.1.aar
+          echo "SOURCE_LIBBOX_SHA256=b97d8a17629fc2f1909427bf419d98a8797fab04465584608d7610ad8f65e075" >> "$GITHUB_ENV"
+
+      - name: Run unit tests with source-built libbox
+        run: ./gradlew test -PautovpnLibboxSha256="$SOURCE_LIBBOX_SHA256" --stacktrace
+
+      - name: Run Android lint with source-built libbox
+        run: ./gradlew lint -PautovpnLibboxSha256="$SOURCE_LIBBOX_SHA256" --stacktrace
+
+      - name: Build all ABI-specific debug APKs with source-built libbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="app/build/outputs/sayanvpn-debug-apks"
+          mkdir -p "$out"
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            rm -f app/build/outputs/apk/debug/app-debug.apk
+            ./gradlew assembleDebug -PautovpnAbi="$abi" -PautovpnLibboxSha256="$SOURCE_LIBBOX_SHA256" --stacktrace
+            cp app/build/outputs/apk/debug/app-debug.apk "$out/app-$abi-debug.apk"
+          done
+
+      - name: Verify APKs and write SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_dir="app/build/outputs/sayanvpn-debug-apks"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -x "$build_tools/apksigner"
+          shopt -s nullglob
+          apks=("$apk_dir"/*.apk)
+          test "${#apks[@]}" -eq 4
+          for apk in "${apks[@]}"; do
+            test -s "$apk"
+            "$build_tools/apksigner" verify --verbose "$apk"
+            size="$(stat -c%s "$apk")"
+            echo "$apk: $size bytes"
+            if (( size > 150 * 1024 * 1024 )); then
+              echo "::error file=$apk::APK unexpectedly exceeds 150 MiB; ABI filtering failed"
+              exit 1
+            fi
+            name="$(basename "$apk")"
+            (cd "$apk_dir" && sha256sum "$name" > "$name.sha256")
+          done
+
+      - name: Upload APKs built with source-built libbox
+        uses: actions/upload-artifact@v4
+        with:
+          name: sayanvpn-debug-source-libbox-v1.14.1
+          path: app/build/outputs/sayanvpn-debug-apks/*
+          if-no-files-found: error
+          retention-days: 14
