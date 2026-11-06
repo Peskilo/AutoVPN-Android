@@ -17,9 +17,9 @@ class NodeLatencyRepositoryTest {
     fun `auto fallback prefers fresh proxy successes over tcp successes`() {
         val nodes = listOf("timeout", "tcp-fast", "proxy-slower", "unknown")
         val verdicts = mapOf(
-            "timeout" to NodeLatency(null, 1_000L, LatencyMethod.Tcp),
-            "tcp-fast" to NodeLatency(80, 1_000L, LatencyMethod.Tcp),
-            "proxy-slower" to NodeLatency(190, 1_000L, LatencyMethod.Proxy),
+            "timeout" to mapOf(LatencyMethod.Tcp to NodeLatency(null, 1_000L, LatencyMethod.Tcp)),
+            "tcp-fast" to mapOf(LatencyMethod.Tcp to NodeLatency(80, 1_000L, LatencyMethod.Tcp)),
+            "proxy-slower" to mapOf(LatencyMethod.Proxy to NodeLatency(190, 1_000L, LatencyMethod.Proxy)),
         )
 
         assertEquals(
@@ -29,13 +29,32 @@ class NodeLatencyRepositoryTest {
     }
 
     @Test
+    fun `fresh proxy failure is not hidden by a successful tcp connect`() {
+        val nodes = listOf("proxy-failed", "tcp-only", "unknown")
+        val verdicts = mapOf(
+            "proxy-failed" to mapOf(
+                LatencyMethod.Proxy to NodeLatency(null, 1_000L, LatencyMethod.Proxy),
+                LatencyMethod.Tcp to NodeLatency(40, 1_000L, LatencyMethod.Tcp),
+            ),
+            "tcp-only" to mapOf(
+                LatencyMethod.Tcp to NodeLatency(80, 1_000L, LatencyMethod.Tcp),
+            ),
+        )
+
+        assertEquals(
+            listOf("tcp-only", "unknown", "proxy-failed"),
+            orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
+        )
+    }
+
+    @Test
     fun `auto fallback ignores stale and future measurements`() {
         val nowMs = LATENCY_TTL_MS + 10_000L
         val nodes = listOf("stale", "fresh", "future")
         val verdicts = mapOf(
-            "stale" to NodeLatency(5, 1_000L, LatencyMethod.Proxy),
-            "fresh" to NodeLatency(120, nowMs - 1_000L, LatencyMethod.Tcp),
-            "future" to NodeLatency(1, nowMs + 1_000L, LatencyMethod.Proxy),
+            "stale" to mapOf(LatencyMethod.Proxy to NodeLatency(5, 1_000L, LatencyMethod.Proxy)),
+            "fresh" to mapOf(LatencyMethod.Tcp to NodeLatency(120, nowMs - 1_000L, LatencyMethod.Tcp)),
+            "future" to mapOf(LatencyMethod.Proxy to NodeLatency(1, nowMs + 1_000L, LatencyMethod.Proxy)),
         )
 
         assertEquals(
@@ -48,8 +67,8 @@ class NodeLatencyRepositoryTest {
     fun `auto fallback keeps original order when evidence is equally weak`() {
         val nodes = listOf("first", "second")
         val verdicts = mapOf(
-            "first" to NodeLatency(null, 1_000L, LatencyMethod.Proxy),
-            "second" to NodeLatency(null, 1_000L, LatencyMethod.Tcp),
+            "first" to mapOf(LatencyMethod.Proxy to NodeLatency(null, 1_000L, LatencyMethod.Proxy)),
+            "second" to mapOf(LatencyMethod.Tcp to NodeLatency(null, 1_000L, LatencyMethod.Tcp)),
         )
 
         assertEquals(
@@ -66,19 +85,23 @@ class NodeLatencyRepositoryTest {
             val stored = repo.latencies.first()
             assertEquals(NodeLatency(42, 1_000L, LatencyMethod.Tcp), stored["a"])
             assertEquals(NodeLatency(null, 1_000L, LatencyMethod.Tcp), stored["b"])
+            assertEquals(
+                NodeLatency(42, 1_000L, LatencyMethod.Tcp),
+                repo.verdicts.first().getValue("a").getValue(LatencyMethod.Tcp),
+            )
         }
 
     @Test
-    fun `a newer verdict replaces the old one including its method`() =
+    fun `tcp and proxy verdicts coexist independently for one node`() =
         runTest {
             repo.record(mapOf("a" to 42), LatencyMethod.Tcp)
             clock = 5_000L
             repo.record(mapOf("a" to 310), LatencyMethod.Proxy)
 
-            assertEquals(
-                NodeLatency(310, 5_000L, LatencyMethod.Proxy),
-                repo.latencies.first().getValue("a"),
-            )
+            val byMethod = repo.verdicts.first().getValue("a")
+            assertEquals(NodeLatency(42, 1_000L, LatencyMethod.Tcp), byMethod[LatencyMethod.Tcp])
+            assertEquals(NodeLatency(310, 5_000L, LatencyMethod.Proxy), byMethod[LatencyMethod.Proxy])
+            assertEquals(2, dao.allRows.size)
         }
 
     @Test

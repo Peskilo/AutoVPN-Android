@@ -378,15 +378,29 @@ data class NodeLatencyEntity(
 abstract class NodeLatencyDao {
     /** Inner join: results of vanished nodes are invisible even before swept. */
     @Query(
-        """SELECT l.* FROM node_latency l
-            INNER JOIN nodes n ON n.id = l.nodeId""",
+        """SELECT
+            CASE WHEN instr(l.nodeId, char(31)) > 0
+                 THEN substr(l.nodeId, 1, instr(l.nodeId, char(31)) - 1)
+                 ELSE l.nodeId END AS nodeId,
+            l.latencyMs, l.checkedAtEpochMs, l.method
+            FROM node_latency l
+            INNER JOIN nodes n ON n.id =
+                CASE WHEN instr(l.nodeId, char(31)) > 0
+                     THEN substr(l.nodeId, 1, instr(l.nodeId, char(31)) - 1)
+                     ELSE l.nodeId END""",
     )
     abstract fun observeLive(): Flow<List<NodeLatencyEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertAll(rows: List<NodeLatencyEntity>)
 
-    @Query("DELETE FROM node_latency WHERE nodeId NOT IN (SELECT id FROM nodes)")
+    @Query(
+        """DELETE FROM node_latency
+            WHERE (CASE WHEN instr(nodeId, char(31)) > 0
+                        THEN substr(nodeId, 1, instr(nodeId, char(31)) - 1)
+                        ELSE nodeId END)
+            NOT IN (SELECT id FROM nodes)""",
+    )
     abstract suspend fun deleteOrphans()
 
     /** Write + sweep as one transaction: a result for a node that no longer

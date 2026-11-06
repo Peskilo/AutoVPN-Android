@@ -600,6 +600,12 @@ class ServersViewModel
                     try {
                         if (connectionManager.state.value is VpnConnectionState.Connected) {
                             runUrlTest()
+                            // A second, independent check against the physical
+                            // underlay. It is intentionally not presented as
+                            // a proxy measurement in the connected UI.
+                            if (connectionManager.state.value is VpnConnectionState.Connected) {
+                                runTcpTest()
+                            }
                         } else {
                             runTcpTest()
                         }
@@ -637,8 +643,6 @@ class ServersViewModel
                 it.copy(
                     delays = it.delays - ids,
                     tested = it.tested - ids,
-                    urlTested = it.urlTested - ids,
-                    urlTestDelays = it.urlTestDelays - ids,
                 )
             }
             val measured = mutableMapOf<String, Int?>()
@@ -647,12 +651,10 @@ class ServersViewModel
                     nodes.forEach { node ->
                         launch {
                             val delay = latencyProbe.measure(node.server, node.port)
-                            // A connect that landed mid-probe must not
-                            // publish a direct result into the
-                            // connected-mode surface.
-                            if (connectionManager.state.value is VpnConnectionState.Connected) {
-                                return@launch
-                            }
+                            // Keep this underlay verdict separate from
+                            // the engine's proxy-path result. The connected UI
+                            // reads only engineSurface; this retained surface
+                            // becomes visible again after disconnect.
                             measured[node.id] = delay
                             _progress.value = LatencyProgress(measured.size, nodes.size)
                             probeSurface.update { surface ->
@@ -664,11 +666,6 @@ class ServersViewModel
                                             surface.delays - node.id
                                         },
                                     tested = surface.tested + node.id,
-                                    // A fresh direct measurement
-                                    // supersedes a retained urltest
-                                    // verdict for this tag.
-                                    urlTested = surface.urlTested - node.id,
-                                    urlTestDelays = surface.urlTestDelays - node.id,
                                 )
                             }
                         }
