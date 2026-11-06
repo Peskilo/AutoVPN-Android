@@ -1,0 +1,120 @@
+name: Build sing-box libbox AAR
+
+run-name: libbox v1.14.1 source build · ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - revival/arm64-build-2026-11-05
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: libbox-source-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-libbox:
+    name: Build official v1.14.1 libbox for Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out AutoVPN
+        uses: actions/checkout@v4
+
+      - name: Check out pinned sing-box source
+        uses: actions/checkout@v4
+        with:
+          repository: SagerNet/sing-box
+          ref: 1ac1a339cb1223e9c70eae14c44411c75033c02d
+          path: sing-box-src
+          persist-credentials: false
+
+      - name: Set up Go 1.25.5
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache: false
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;28.0.13004108"
+          test -f "$ANDROID_HOME/licenses/android-sdk-license"
+          test -f "$ANDROID_HOME/ndk/28.0.13004108/source.properties"
+
+      - name: Install the sing-box gomobile toolchain
+        working-directory: sing-box-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          make lib_install
+          "$(go env GOPATH)/bin/gomobile" init
+          "$(go env GOPATH)/bin/gomobile" version
+          java --version
+          go version
+
+      - name: Build libbox AARs from the pinned source
+        working-directory: sing-box-src
+        run: make lib_android
+
+      - name: Verify AARs and record checksums
+        working-directory: sing-box-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s libbox.aar
+          test -s libbox-legacy.aar
+          mkdir -p ../build/libbox
+          cp libbox.aar libbox-legacy.aar ../build/libbox/
+          cd ../build/libbox
+          for aar in libbox.aar libbox-legacy.aar; do
+            echo "=== $aar ==="
+            unzip -t "$aar"
+            unzip -Z1 "$aar" | awk -F/ '$1 == "jni" && $2 != "" { print $2 }' | sort -u
+            sha256sum "$aar"
+          done
+          unzip -Z1 libbox.aar | awk -F/ '$1 == "jni" && $2 != "" { print $2 }' | sort -u > libbox-abis.txt
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            grep -Fxq "$abi" libbox-abis.txt
+          done
+          sha256sum libbox.aar libbox-legacy.aar > SHA256SUMS.txt
+          {
+            echo "sing-box tag: v1.14.1"
+            echo "sing-box commit: 1ac1a339cb1223e9c70eae14c44411c75033c02d"
+            echo "Go: $(go version)"
+            echo "Java: $(java --version 2>&1 | head -n 1)"
+            echo "Android NDK: 28.0.13004108"
+            echo
+            cat SHA256SUMS.txt
+          } > BUILD-METADATA.txt
+
+      - name: Upload source-built libbox artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbox-v1.14.1-source-built
+          path: |
+            build/libbox/libbox.aar
+            build/libbox/libbox-legacy.aar
+            build/libbox/SHA256SUMS.txt
+            build/libbox/BUILD-METADATA.txt
+            build/libbox/libbox-abis.txt
+          if-no-files-found: error
+          retention-days: 14
