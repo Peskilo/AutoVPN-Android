@@ -33,7 +33,11 @@ internal fun latencyStorageKey(nodeId: String, method: LatencyMethod): String =
     "$nodeId$LATENCY_STORAGE_SEPARATOR${method.storage}"
 
 /** How long a stored verdict still counts as current for ordering. */
+/** Successful measurements remain useful longer than a one-off failure. */
 const val LATENCY_TTL_MS = 24L * 60 * 60 * 1000
+
+/** A transient timeout must not deprioritize a recovered node for an entire day. */
+const val LATENCY_FAILURE_TTL_MS = 5L * 60 * 1000
 
 /** A persisted verdict. [latencyMs] null = the probe ran and failed. */
 data class NodeLatency(
@@ -41,8 +45,12 @@ data class NodeLatency(
     val checkedAtMs: Long,
     val method: LatencyMethod,
 ) {
-    /** A timestamp in the future (clock moved back) can't be trusted: stale. */
-    fun isFresh(nowMs: Long): Boolean = nowMs - checkedAtMs in 0..LATENCY_TTL_MS
+    /** Future timestamps (clock moved back) are never trusted. Failures expire quickly. */
+    fun isFresh(nowMs: Long): Boolean {
+        val ageMs = nowMs - checkedAtMs
+        val ttlMs = if (latencyMs == null) LATENCY_FAILURE_TTL_MS else LATENCY_TTL_MS
+        return ageMs in 0..ttlMs
+    }
 }
 
 /**
