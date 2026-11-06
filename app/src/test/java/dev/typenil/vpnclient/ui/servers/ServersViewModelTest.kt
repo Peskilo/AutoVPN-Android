@@ -338,7 +338,7 @@ class ServersViewModelTest {
     private val subscriptionDao = FakeSubscriptionDao()
     private val nodePreferenceDao = FakeNodePreferenceDao()
     private val socketProtector = VpnSocketProtector()
-    private val latencyProbe = LatencyProbe(socketProtector)
+    private val latencyProbe = LatencyProbe(socketProtector, dispatcher, dispatcher) { loopback() }
     private val latencyDao = FakeNodeLatencyDao()
     private var clockMs = 1_000_000L
     private val latencyRepository = NodeLatencyRepository(latencyDao) { clockMs }
@@ -1188,6 +1188,8 @@ class ServersViewModelTest {
 
             assertEquals(NodeLatencyEntity("n1", 95, 5_000_000L, "proxy"), latencyDao.rows["n1"])
             assertEquals(NodeLatencyEntity("n2", null, 5_000_000L, "proxy"), latencyDao.rows["n2"])
+            assertTrue(("n1" to "tcp") in latencyDao.allRows)
+            assertTrue(("n1" to "proxy") in latencyDao.allRows)
         }
 
     @Test

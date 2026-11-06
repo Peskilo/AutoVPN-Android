@@ -26,9 +26,6 @@ internal const val LATENCY_STORAGE_SEPARATOR = "\u001F"
 internal fun latencyStorageKey(nodeId: String, method: LatencyMethod): String =
     "$nodeId$LATENCY_STORAGE_SEPARATOR${method.storage}"
 
-internal fun latencyNodeIdFromStorageKey(storageKey: String): String =
-    storageKey.substringBefore(LATENCY_STORAGE_SEPARATOR)
-
 /** How long a stored verdict still counts as current for ordering. */
 const val LATENCY_TTL_MS = 24L * 60 * 60 * 1000
 
@@ -108,11 +105,13 @@ class NodeLatencyRepository internal constructor(
     /** Compatibility/display projection: newest verdict per node; Proxy wins
      *  an exact timestamp tie because it is stronger end-to-end evidence. */
     val latencies: Flow<Map<String, NodeLatency>> =
-        verdicts.mapValues { (_, byMethod) ->
-            byMethod.values.maxWithOrNull(
-                compareBy<NodeLatency> { it.checkedAtMs }
-                    .thenBy { it.method == LatencyMethod.Proxy },
-            )!!
+        verdicts.map { byNode ->
+            byNode.mapValues { (_, byMethod) ->
+                byMethod.values.maxWithOrNull(
+                    compareBy<NodeLatency> { it.checkedAtMs }
+                        .thenBy { it.method == LatencyMethod.Proxy },
+                )!!
+            }
         }
 
     /** One verdict batch, all stamped with the same time. `null` values are
