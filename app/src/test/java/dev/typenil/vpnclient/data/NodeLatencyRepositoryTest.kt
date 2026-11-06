@@ -2,6 +2,9 @@ package dev.typenil.vpnclient.data
 
 import dev.typenil.vpnclient.data.db.FakeNodeLatencyDao
 import dev.typenil.vpnclient.data.db.NodeLatencyEntity
+import dev.typenil.vpnclient.core.subscription.model.NodeSelection
+import dev.typenil.vpnclient.core.subscription.model.ProtocolType
+import dev.typenil.vpnclient.core.subscription.model.ProxyNode
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -11,6 +14,23 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 private data class AutoFallbackProbeNode(val id: String, val host: String, val port: Int)
+
+private fun autoProbeNode(
+    id: String,
+    name: String,
+    server: String,
+    protocol: ProtocolType = ProtocolType.VLESS,
+    outboundJson: String = """{"type":"vless","server":"$server","server_port":443,"tls":{"enabled":true}}""",
+) = ProxyNode(
+    id = id,
+    name = name,
+    protocol = protocol,
+    server = server,
+    port = 443,
+    outboundJson = outboundJson,
+    rawUri = null,
+    subscriptionId = 1L,
+)
 
 class NodeLatencyRepositoryTest {
     private val dao = FakeNodeLatencyDao()
@@ -79,6 +99,31 @@ class NodeLatencyRepositoryTest {
             listOf("first", "second"),
             orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
         )
+    }
+
+    @Test
+    fun `auto preflight is limited to tunnel-allowed nodes in the selected region`() {
+        val nodes = listOf(
+            autoProbeNode("global", "Germany #1", "global.example"),
+            autoProbeNode("ru", "Russia #1", "ru.example"),
+            autoProbeNode(
+                "plain",
+                "France #1",
+                "plain.example",
+                protocol = ProtocolType.SOCKS,
+                outboundJson = """{"type":"socks","server":"plain.example","server_port":1080}""",
+            ),
+        )
+
+        assertEquals(
+            listOf("global"),
+            autoFallbackProbeCandidates(nodes, NodeSelection.AUTO_ID).map { it.id },
+        )
+        assertEquals(
+            listOf("ru"),
+            autoFallbackProbeCandidates(nodes, NodeSelection.AUTO_RUSSIA_ID).map { it.id },
+        )
+        assertTrue(autoFallbackProbeCandidates(nodes, "manual-node").isEmpty())
     }
 
     @Test
