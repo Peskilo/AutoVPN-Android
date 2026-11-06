@@ -44,20 +44,16 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Use the preinstalled Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" || command -v sdkmanager
-          sdkmanager --version
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Install pinned Android SDK and NDK
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager \
-            "platform-tools" \
+          sdkmanager --install \
             "platforms;android-35" \
             "build-tools;35.0.0" \
             "ndk;28.0.13004108"
