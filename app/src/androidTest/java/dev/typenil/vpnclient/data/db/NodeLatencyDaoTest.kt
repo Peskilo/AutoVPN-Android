@@ -53,6 +53,19 @@ class NodeLatencyDaoTest {
         }
 
     @Test
+    fun firstMethodSpecificWriteReplacesItsLegacyV8Row() =
+        runBlocking {
+            db.nodeDao().upsertAll(listOf(node("a")))
+            db.nodeLatencyDao().record(listOf(NodeLatencyEntity("a", 10, 1L, "tcp")))
+            db.nodeLatencyDao().record(listOf(NodeLatencyEntity("a\u001Ftcp", 20, 2L, "tcp")))
+
+            val rows = db.nodeLatencyDao().observeLive().first()
+            assertEquals(1, rows.size)
+            assertEquals("tcp", rows.single().method)
+            assertEquals(20, rows.single().latencyMs)
+        }
+
+    @Test
     fun resultsSurviveRefreshOfUnchangedNodesAndDieWithRemovedOnes() =
         runBlocking {
             val nodes = db.nodeDao()

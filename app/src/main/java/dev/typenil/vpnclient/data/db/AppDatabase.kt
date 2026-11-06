@@ -396,6 +396,10 @@ abstract class NodeLatencyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertAll(rows: List<NodeLatencyEntity>)
 
+    /** Remove a legacy v8 row for the same method before writing its keyed replacement. */
+    @Query("DELETE FROM node_latency WHERE nodeId = :nodeId AND method = :method")
+    abstract suspend fun deleteLegacy(nodeId: String, method: String)
+
     @Query(
         """DELETE FROM node_latency
             WHERE (CASE WHEN instr(nodeId, char(31)) > 0
@@ -409,6 +413,12 @@ abstract class NodeLatencyDao {
      *  exists (refresh raced the probe) never lingers. */
     @Transaction
     open suspend fun record(rows: List<NodeLatencyEntity>) {
+        // A v8 row used the bare node id as its primary key. On the first
+        // write of a method after upgrade, replace that legacy row instead
+        // of leaving two logical verdicts for the same method.
+        for (row in rows) {
+            deleteLegacy(row.nodeId.substringBefore('\u001F'), row.method)
+        }
         upsertAll(rows)
         deleteOrphans()
     }

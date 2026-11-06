@@ -36,6 +36,13 @@ class FakeNodeLatencyDao : NodeLatencyDao() {
             }
         }
 
+    override suspend fun deleteLegacy(nodeId: String, method: String) {
+        state.value =
+            state.value.filterNot { (key, row) ->
+                key.first == nodeId && key.second == method && row.nodeId == nodeId
+            }
+    }
+
     override suspend fun upsertAll(rows: List<NodeLatencyEntity>) {
         state.value =
             state.value + rows.associateBy { baseNodeId(it.nodeId) to it.method }
