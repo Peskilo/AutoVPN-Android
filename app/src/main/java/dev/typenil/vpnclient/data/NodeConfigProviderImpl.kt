@@ -166,8 +166,9 @@ class NodeConfigProviderImpl
             val compileNodes =
                 if (autoSelected) {
                     val existingVerdicts = latencyRepository.verdicts.first()
+                    val preflightCandidates = autoFallbackProbeCandidates(nodes, pick)
                     val preflight = probeUnknownAutoFallbackCandidates(
-                        candidates = nodes,
+                        candidates = preflightCandidates,
                         idOf = { it.id },
                         hostOf = { it.server },
                         portOf = { it.port },
@@ -314,3 +315,21 @@ internal fun nodeSetFingerprint(entities: List<NodeEntity>): String {
     }
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
+
+/**
+ * Candidates that can actually enter the selected Auto URLTest group.
+ * Probe only this subset: testing the opposite region first could consume the
+ * entire preflight budget before the selected group receives any evidence.
+ */
+internal fun autoFallbackProbeCandidates(
+    nodes: List<ProxyNode>,
+    selectedNodeId: String,
+): List<ProxyNode> {
+    val allowed = nodes.filter(::isTunnelAllowed)
+    return when (selectedNodeId) {
+        NodeSelection.AUTO_ID -> allowed.filterNot(ProxyNode::isRussianServer)
+        NodeSelection.AUTO_RUSSIA_ID -> allowed.filter(ProxyNode::isRussianServer)
+        else -> emptyList()
+    }
+}
+
