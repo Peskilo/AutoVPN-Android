@@ -96,8 +96,8 @@ class NodeLatencyRepository internal constructor(
             buildMap {
                 for (row in rows) {
                     val method = LatencyMethod.fromStorage(row.method) ?: continue
-                    val byMethod = getOrPut(row.nodeId) { mutableMapOf() }
-                    byMethod[method] = NodeLatency(row.latencyMs, row.checkedAtEpochMs, method)
+                    val byMethod = getOrPut(row.nodeId) { emptyMap() }
+                    put(row.nodeId, byMethod + (method to NodeLatency(row.latencyMs, row.checkedAtEpochMs, method)))
                 }
             }
         }

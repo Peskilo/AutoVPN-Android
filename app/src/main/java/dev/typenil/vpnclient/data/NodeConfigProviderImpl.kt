@@ -164,7 +164,7 @@ class NodeConfigProviderImpl
                     orderAutoFallbackCandidates(
                         candidates = nodes,
                         idOf = { it.id },
-                        latencies = latencyRepository.verdicts.first(),
+                        verdicts = latencyRepository.verdicts.first(),
                         nowMs = latencyRepository.now(),
                     )
                 } else {
