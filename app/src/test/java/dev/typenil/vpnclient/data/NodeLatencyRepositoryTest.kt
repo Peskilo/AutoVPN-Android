@@ -105,6 +105,18 @@ class NodeLatencyRepositoryTest {
         }
 
     @Test
+    fun `legacy v8 node-only rows remain readable beside new method rows`() =
+        runTest {
+            dao.upsertAll(listOf(NodeLatencyEntity("legacy", 55, 1_000L, "tcp")))
+            clock = 2_000L
+            repo.record(mapOf("legacy" to 95), LatencyMethod.Proxy)
+
+            val byMethod = repo.verdicts.first().getValue("legacy")
+            assertEquals(NodeLatency(55, 1_000L, LatencyMethod.Tcp), byMethod[LatencyMethod.Tcp])
+            assertEquals(NodeLatency(95, 2_000L, LatencyMethod.Proxy), byMethod[LatencyMethod.Proxy])
+        }
+
+    @Test
     fun `rows of nodes that no longer exist are swept on the next write`() =
         runTest {
             dao.liveNodeIds = setOf("a", "b")

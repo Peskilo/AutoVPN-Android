@@ -583,11 +583,10 @@ class ServersViewModel
 
         /**
          * Latency probe over every enabled node. Connected: the engine's
-         * urltest measures each node through its own outbound over the real
-         * underlay (our sockets never enter the TUN) — the run covers
-         * `urltest` group members only and waits, bounded, for fresh terminal
-         * results. Disconnected: a direct TCP-connect probe per node — same
-         * underlay, without a running core. Verdicts are persisted with their
+         * urltest checks covered nodes through their proxy outbounds; after its
+         * bounded run, a separate TCP-connect pass checks every node on the
+         * physical underlay. Disconnected: only the TCP pass is available
+         * because no sing-box core is running. Verdicts are persisted by
          * method and time. A second press while a run is active is ignored —
          * no parallel runs; [cancelLatencyTest] stops the active one.
          */

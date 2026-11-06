@@ -360,9 +360,11 @@ abstract class NodeDao {
  * Last latency verdict per node, stored apart from `nodes` for the same
  * reason as [NodePreferenceEntity]: the node table is rewritten wholesale on
  * every refresh, so an FK `ON DELETE CASCADE` would wipe every result on each
- * refresh — even for nodes whose id is unchanged. Rows are keyed by node id
- * with no FK; [NodeLatencyDao.observeLive] only ever returns rows whose node
- * still exists and [NodeLatencyDao.record] sweeps the rest.
+ * refresh — even for nodes whose id is unchanged. The v8 schema's nodeId
+ * primary key stores a logical (node id, method) key separated by U+001F;
+ * old rows containing only a node id remain readable. There is no FK;
+ * [NodeLatencyDao.observeLive] projects the original node id and only returns
+ * rows whose node still exists, while [NodeLatencyDao.record] sweeps orphans.
  */
 @Entity(tableName = "node_latency")
 data class NodeLatencyEntity(
