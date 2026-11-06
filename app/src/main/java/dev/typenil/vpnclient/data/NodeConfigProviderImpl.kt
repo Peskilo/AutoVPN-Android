@@ -40,6 +40,7 @@ class NodeConfigProviderImpl
         private val settings: SettingsRepository,
         private val compiler: ConfigCompiler,
         private val ruleSetStore: RuleSetStore,
+        private val latencyRepository: NodeLatencyRepository,
         private val routingRuleDao: dev.typenil.vpnclient.data.db.RoutingRuleDao,
     ) : NodeConfigProvider {
         override val selectedNodeId: Flow<String?> = settings.selectedNodeId
@@ -153,15 +154,31 @@ class NodeConfigProviderImpl
             // lands here, and a still-stale id keeps failing loudly.
             val pick = settings.selectedNodeId.first()
             val routeMode = settings.routeMode.first()
+            val autoSelected = pick == NodeSelection.AUTO_ID || pick == NodeSelection.AUTO_RUSSIA_ID
+            // sing-box falls back to the first urltest candidate before it
+            // has successful measurements. Seed that fallback with recent
+            // real probe evidence so a known timeout is not first merely
+            // because of Room row order. This does not change manual picks.
+            val compileNodes =
+                if (autoSelected) {
+                    orderAutoFallbackCandidates(
+                        candidates = nodes,
+                        idOf = { it.id },
+                        latencies = latencyRepository.latencies.first(),
+                        nowMs = latencyRepository.now(),
+                    )
+                } else {
+                    nodes
+                }
             val compiled =
                 compiler.compile(
-                    nodes = nodes,
+                    nodes = compileNodes,
                     selectedNodeId = pick,
                     ipv6Enabled = settings.ipv6Enabled.first(),
                     routeMode = routeMode,
                     underlayIpv6 = resolveUnderlayIpv6(),
                     ruleSetPaths = ruleSetStore.ensureReady(routeMode),
-                    selectAuto = pick == NodeSelection.AUTO_ID || pick == NodeSelection.AUTO_RUSSIA_ID,
+                    selectAuto = autoSelected,
                     bypassLan = settings.bypassLan.first(),
                     dnsProfile = settings.dnsProfile.first(),
                     userRules = userRoutingRules(),
