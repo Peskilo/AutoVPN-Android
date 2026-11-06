@@ -322,6 +322,39 @@ class NodeLatencyRepositoryTest {
         }
 
     @Test
+    fun `failed verdicts expire sooner than successful measurements`() {
+        val failed = NodeLatency(null, 1_000L, LatencyMethod.Tcp)
+        val succeeded = NodeLatency(42, 1_000L, LatencyMethod.Tcp)
+
+        assertEquals(true, failed.isFresh(1_000L + LATENCY_FAILURE_TTL_MS))
+        assertEquals(false, failed.isFresh(1_001L + LATENCY_FAILURE_TTL_MS))
+        assertEquals(true, succeeded.isFresh(1_001L + LATENCY_FAILURE_TTL_MS))
+    }
+
+    @Test
+    fun `expired tcp failure becomes eligible for a new first-connect preflight`() = runTest {
+        val candidate = AutoFallbackProbeNode("recovered", "recovered.example", 443)
+        val checkedAt = 1_000L
+        val nowMs = checkedAt + LATENCY_FAILURE_TTL_MS + 1L
+
+        val results = probeUnknownAutoFallbackCandidates(
+            candidates = listOf(candidate),
+            idOf = { it.id },
+            hostOf = { it.host },
+            portOf = { it.port },
+            verdicts = mapOf(
+                candidate.id to mapOf(
+                    LatencyMethod.Tcp to NodeLatency(null, checkedAt, LatencyMethod.Tcp),
+                ),
+            ),
+            nowMs = nowMs,
+            probe = { _, _ -> 64 },
+        )
+
+        assertEquals(mapOf("recovered" to 64), results)
+    }
+
+    @Test
     fun `a verdict is fresh up to the TTL, outdated after it and when from the future`() {
         val v = NodeLatency(42, 1_000L, LatencyMethod.Tcp)
         assertEquals(true, v.isFresh(1_000L + LATENCY_TTL_MS))
