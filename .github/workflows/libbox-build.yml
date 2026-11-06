@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: libbox-source-build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-libbox:
