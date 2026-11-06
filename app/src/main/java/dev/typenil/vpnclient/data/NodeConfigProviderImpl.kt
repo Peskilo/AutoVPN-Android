@@ -7,6 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.typenil.vpnclient.core.engine.EngineConfig
 import dev.typenil.vpnclient.core.engine.singbox.ConfigCompiler
 import dev.typenil.vpnclient.core.engine.singbox.RuleSetStore
+import dev.typenil.vpnclient.core.common.LatencyProbe
 import dev.typenil.vpnclient.core.subscription.model.NodeSelection
 import dev.typenil.vpnclient.core.subscription.model.NodeSummary
 import dev.typenil.vpnclient.core.subscription.model.ProtocolType
@@ -41,6 +42,7 @@ class NodeConfigProviderImpl
         private val compiler: ConfigCompiler,
         private val ruleSetStore: RuleSetStore,
         private val latencyRepository: NodeLatencyRepository,
+        private val latencyProbe: LatencyProbe,
         private val routingRuleDao: dev.typenil.vpnclient.data.db.RoutingRuleDao,
     ) : NodeConfigProvider {
         override val selectedNodeId: Flow<String?> = settings.selectedNodeId
@@ -156,15 +158,32 @@ class NodeConfigProviderImpl
             val routeMode = settings.routeMode.first()
             val autoSelected = pick == NodeSelection.AUTO_ID || pick == NodeSelection.AUTO_RUSSIA_ID
             // sing-box falls back to the first urltest candidate before it
-            // has successful measurements. Seed that fallback with recent
-            // real probe evidence so a known timeout is not first merely
-            // because of Room row order. This does not change manual picks.
+            // has successful measurements. Keep using persisted evidence when
+            // available; on a first run, seed the empty history with a bounded
+            // direct TCP preflight. TCP only orders candidates — it never
+            // removes one or claims that the proxy handshake works. Manual
+            // selections are unchanged.
             val compileNodes =
                 if (autoSelected) {
+                    val existingVerdicts = latencyRepository.verdicts.first()
+                    val preflight = probeUnknownAutoFallbackCandidates(
+                        candidates = nodes,
+                        idOf = { it.id },
+                        hostOf = { it.server },
+                        portOf = { it.port },
+                        verdicts = existingVerdicts,
+                        nowMs = latencyRepository.now(),
+                        probe = { host, port -> latencyProbe.measure(host, port) },
+                    )
+                    if (preflight.isNotEmpty()) {
+                        latencyRepository.record(preflight, LatencyMethod.Tcp)
+                    }
+                    val currentVerdicts =
+                        if (preflight.isEmpty()) existingVerdicts else latencyRepository.verdicts.first()
                     orderAutoFallbackCandidates(
                         candidates = nodes,
                         idOf = { it.id },
-                        verdicts = latencyRepository.verdicts.first(),
+                        verdicts = currentVerdicts,
                         nowMs = latencyRepository.now(),
                     )
                 } else {
