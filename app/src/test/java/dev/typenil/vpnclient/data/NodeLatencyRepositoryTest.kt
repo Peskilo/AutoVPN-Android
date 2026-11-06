@@ -326,9 +326,11 @@ class NodeLatencyRepositoryTest {
         val failed = NodeLatency(null, 1_000L, LatencyMethod.Tcp)
         val succeeded = NodeLatency(42, 1_000L, LatencyMethod.Tcp)
 
+        assertEquals(15L * 60 * 1000, LATENCY_TTL_MS)
         assertEquals(true, failed.isFresh(1_000L + LATENCY_FAILURE_TTL_MS))
         assertEquals(false, failed.isFresh(1_001L + LATENCY_FAILURE_TTL_MS))
-        assertEquals(true, succeeded.isFresh(1_001L + LATENCY_FAILURE_TTL_MS))
+        assertEquals(true, succeeded.isFresh(1_000L + LATENCY_TTL_MS))
+        assertEquals(false, succeeded.isFresh(1_001L + LATENCY_TTL_MS))
     }
 
     @Test
