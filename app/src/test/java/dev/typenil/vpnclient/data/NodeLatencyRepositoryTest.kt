@@ -2,11 +2,15 @@ package dev.typenil.vpnclient.data
 
 import dev.typenil.vpnclient.data.db.FakeNodeLatencyDao
 import dev.typenil.vpnclient.data.db.NodeLatencyEntity
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+
+private data class AutoFallbackProbeNode(val id: String, val host: String, val port: Int)
 
 class NodeLatencyRepositoryTest {
     private val dao = FakeNodeLatencyDao()
@@ -75,6 +79,142 @@ class NodeLatencyRepositoryTest {
             listOf("first", "second"),
             orderAutoFallbackCandidates(nodes, { it }, verdicts, nowMs = 1_000L),
         )
+    }
+
+    @Test
+    fun `empty history triggers a bounded TCP preflight for all candidates`() = runTest {
+        val candidates = listOf(
+            AutoFallbackProbeNode("a", "a.example", 443),
+            AutoFallbackProbeNode("b", "b.example", 8443),
+        )
+        val calls = mutableListOf<String>()
+
+        val results = probeUnknownAutoFallbackCandidates(
+            candidates = candidates,
+            idOf = { it.id },
+            hostOf = { it.host },
+            portOf = { it.port },
+            verdicts = emptyMap(),
+            nowMs = 1_000L,
+            budgetMs = 1_000L,
+            probe = { host, port ->
+                calls += "$host:$port"
+                if (host == "a.example") 72 else null
+            },
+        )
+
+        assertEquals(setOf("a.example:443", "b.example:8443"), calls.toSet())
+        assertEquals(mapOf("a" to 72, "b" to null), results)
+    }
+
+    @Test
+    fun `a fresh successful verdict prevents unnecessary first-connect preflight`() = runTest {
+        val candidates = listOf(
+            AutoFallbackProbeNode("known", "known.example", 443),
+            AutoFallbackProbeNode("unknown", "unknown.example", 443),
+        )
+        val calls = mutableListOf<String>()
+
+        val results = probeUnknownAutoFallbackCandidates(
+            candidates = candidates,
+            idOf = { it.id },
+            hostOf = { it.host },
+            portOf = { it.port },
+            verdicts = mapOf(
+                "known" to mapOf(
+                    LatencyMethod.Proxy to NodeLatency(180, 1_000L, LatencyMethod.Proxy),
+                ),
+            ),
+            nowMs = 1_000L,
+            probe = { host, _ -> calls += host; 20 },
+        )
+
+        assertTrue(results.isEmpty())
+        assertTrue(calls.isEmpty())
+    }
+
+    @Test
+    fun `fresh failures stay authoritative and only unknown candidates are preflighted`() = runTest {
+        val candidates = listOf(
+            AutoFallbackProbeNode("proxy-failed", "proxy.example", 443),
+            AutoFallbackProbeNode("tcp-failed", "tcp.example", 443),
+            AutoFallbackProbeNode("unknown", "unknown.example", 443),
+        )
+        val calls = mutableListOf<String>()
+
+        val results = probeUnknownAutoFallbackCandidates(
+            candidates = candidates,
+            idOf = { it.id },
+            hostOf = { it.host },
+            portOf = { it.port },
+            verdicts = mapOf(
+                "proxy-failed" to mapOf(
+                    LatencyMethod.Proxy to NodeLatency(null, 1_000L, LatencyMethod.Proxy),
+                    LatencyMethod.Tcp to NodeLatency(40, 1_000L, LatencyMethod.Tcp),
+                ),
+                "tcp-failed" to mapOf(
+                    LatencyMethod.Tcp to NodeLatency(null, 1_000L, LatencyMethod.Tcp),
+                ),
+            ),
+            nowMs = 1_000L,
+            probe = { host, _ -> calls += host; null },
+        )
+
+        assertEquals(listOf("unknown.example"), calls)
+        assertEquals(mapOf("unknown" to null), results)
+    }
+
+    @Test
+    fun `stale and future evidence do not suppress first-connect preflight`() = runTest {
+        val nowMs = LATENCY_TTL_MS + 10_000L
+        val candidates = listOf(
+            AutoFallbackProbeNode("stale", "stale.example", 443),
+            AutoFallbackProbeNode("future", "future.example", 443),
+        )
+        val calls = mutableListOf<String>()
+
+        val results = probeUnknownAutoFallbackCandidates(
+            candidates = candidates,
+            idOf = { it.id },
+            hostOf = { it.host },
+            portOf = { it.port },
+            verdicts = mapOf(
+                "stale" to mapOf(
+                    LatencyMethod.Proxy to NodeLatency(1, 1_000L, LatencyMethod.Proxy),
+                ),
+                "future" to mapOf(
+                    LatencyMethod.Tcp to NodeLatency(1, nowMs + 1L, LatencyMethod.Tcp),
+                ),
+            ),
+            nowMs = nowMs,
+            probe = { host, _ -> calls += host; 90 },
+        )
+
+        assertEquals(setOf("stale.example", "future.example"), calls.toSet())
+        assertEquals(mapOf("stale" to 90, "future" to 90), results)
+    }
+
+    @Test
+    fun `preflight budget keeps completed verdicts without marking pending probes failed`() = runTest {
+        val candidates = listOf(
+            AutoFallbackProbeNode("fast", "fast.example", 443),
+            AutoFallbackProbeNode("slow", "slow.example", 443),
+        )
+
+        val results = probeUnknownAutoFallbackCandidates(
+            candidates = candidates,
+            idOf = { it.id },
+            hostOf = { it.host },
+            portOf = { it.port },
+            verdicts = emptyMap(),
+            nowMs = 1_000L,
+            budgetMs = 100L,
+            probe = { host, _ ->
+                if (host == "slow.example") awaitCancellation() else 11
+            },
+        )
+
+        assertEquals(mapOf("fast" to 11), results)
     }
 
     @Test
